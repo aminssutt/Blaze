@@ -371,15 +371,28 @@ class IncidentStateMachine:
     # -- transcription track ------------------------------------------- #
 
     def transcript_ready(self, payload: Optional[Dict[str, Any]] = None) -> List[EventEnvelope]:
-        """TRANSCRIBING -> EXTRACTING_RADIO_EVENTS."""
-        self._guard("transcript_ready", {IncidentState.TRANSCRIBING})
+        """TRANSCRIBING -> EXTRACTING_RADIO_EVENTS (first transcript), or a
+        self-transition in EXTRACTING_RADIO_EVENTS for every FURTHER transcript
+        of a multi-audio scenario (issue #53: the 5 audios are transcribed
+        concurrently, so several TRANSCRIPT_READY events belong to one
+        transcription track). RADIO_AGENT_STARTED is emitted exactly once."""
+        self._guard(
+            "transcript_ready",
+            {IncidentState.TRANSCRIBING, IncidentState.EXTRACTING_RADIO_EVENTS},
+        )
+        if self._state is IncidentState.TRANSCRIBING:
+            return self._commit(
+                "transcript_ready",
+                IncidentState.EXTRACTING_RADIO_EVENTS,
+                [
+                    (EventType.TRANSCRIPT_READY, self._payload(payload)),
+                    (EventType.RADIO_AGENT_STARTED, {}),
+                ],
+            )
         return self._commit(
             "transcript_ready",
-            IncidentState.EXTRACTING_RADIO_EVENTS,
-            [
-                (EventType.TRANSCRIPT_READY, self._payload(payload)),
-                (EventType.RADIO_AGENT_STARTED, {}),
-            ],
+            self._state,
+            [(EventType.TRANSCRIPT_READY, self._payload(payload))],
         )
 
     def record_radio_event(self, payload: Optional[Dict[str, Any]] = None) -> List[EventEnvelope]:
@@ -627,6 +640,52 @@ class IncidentStateMachine:
                 (EventType.PLAN_REVISION_REQUESTED, {"reason": f"safety_{status.value}"}),
             ],
             details={"safety_status": status.value},
+        )
+
+    # ------------------------------------------------------------------ #
+    # Mid-incident radio updates (issue #53 — multi-audio scenario)
+    # ------------------------------------------------------------------ #
+
+    def record_radio_update(self, payload: Optional[Dict[str, Any]] = None) -> List[EventEnvelope]:
+        """A NEW radio event processed after the initial planning started.
+
+        Multi-audio scenario (issue #53): radio traffic keeps arriving while a
+        plan version awaits the human gate. This is a self-transition (the
+        global state is unchanged), it only records the event and increments
+        the radio-event counter. It cannot bypass any safety property: reaching
+        dispatch still requires a NEW plan version to pass through
+        SAFETY_REVIEW and AWAITING_HUMAN_APPROVAL.
+        """
+        self._guard(
+            "record_radio_update",
+            {IncidentState.AWAITING_HUMAN_APPROVAL, IncidentState.REVISING_PLAN},
+        )
+        self._radio_event_count += 1
+        return self._commit(
+            "record_radio_update",
+            self._state,
+            [(EventType.RADIO_EVENT_EXTRACTED, self._payload(payload))],
+            details={"radio_event_count": self._radio_event_count},
+        )
+
+    def update_situation_snapshot(
+        self, payload: Optional[Dict[str, Any]] = None
+    ) -> List[EventEnvelope]:
+        """A REVISED situation snapshot incorporating mid-incident radio updates.
+
+        Self-transition (issue #53): the snapshot version is updated (e.g. wind
+        shift, road-status correction, hazard confirmation) without leaving the
+        current state. Any plan built on the new snapshot still goes through
+        the mandatory SAFETY_REVIEW -> AWAITING_HUMAN_APPROVAL path.
+        """
+        self._guard(
+            "update_situation_snapshot",
+            {IncidentState.AWAITING_HUMAN_APPROVAL, IncidentState.REVISING_PLAN},
+        )
+        return self._commit(
+            "update_situation_snapshot",
+            self._state,
+            [(EventType.SITUATION_SNAPSHOT_READY, self._payload(payload))],
         )
 
     # ------------------------------------------------------------------ #
