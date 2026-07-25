@@ -418,18 +418,27 @@ class IncidentPipeline:
             },
         }
 
-    def _approval_decision(self, plan: Mapping[str, Any]) -> Dict[str, Any]:
+    def _approval_decision(
+        self, plan: Mapping[str, Any], *, escalated: bool = False
+    ) -> Dict[str, Any]:
         """PROGRAMMATIC approval for the E2E harness (see module docstring).
 
         In the real demo this object is produced by the human incident
         commander through the approval UI — never automatically.
         """
+        note = "automated E2E test approval"
+        if escalated:
+            note += (
+                " — accepts the residual (non-blocking) safety objections after "
+                "the bounded revision loop; in the real demo this trade-off is "
+                "the human commander's call"
+            )
         return {
             "decision_id": f"ad-{uuid.uuid4().hex[:12]}",
             "plan_id": str(plan.get("plan_id")),
             "decision": "approve",
             "operator_name": "e2e-harness",
-            "operator_note": "automated E2E test approval",
+            "operator_note": note,
             "decided_at": _utcnow_iso(),
         }
 
@@ -596,10 +605,45 @@ class IncidentPipeline:
         with self._stage("safety_review_v1"):
             review = await self.safety_agent.review(dict(plan), snapshot, self.unit_list)
         reviews.append(review)
-        machine.complete_safety_review(SafetyReviewStatus(review["status"]), dict(review))
 
+        # Bounded revision loop with escalation-to-human policy (issue #52):
+        # - pass                    -> human approval gate;
+        # - revise, budget left     -> one more planning round with the
+        #                              objections passed verbatim;
+        # - revise, budget spent    -> ESCALATED to the human commander with
+        #                              the residual objections attached (the
+        #                              Safety Critic never replaces the human);
+        # - block  after the budget -> hard stop, honest failure (a mechanical
+        #                              rule failure is never escalated).
         revision = 0
-        while review["status"] != "pass" and revision < self.max_revisions:
+        escalated = False
+        while True:
+            status = SafetyReviewStatus(review["status"])
+            if status is SafetyReviewStatus.PASS:
+                machine.complete_safety_review(status, dict(review))
+                break
+            if revision >= self.max_revisions:
+                if status is SafetyReviewStatus.REVISE:
+                    machine.complete_safety_review(
+                        status, dict(review), escalate_to_human=True
+                    )
+                    escalated = True
+                    logger.warning(
+                        "safety review still 'revise' after %d revision(s): "
+                        "escalated to the human approval gate with %d residual "
+                        "objection(s)",
+                        revision,
+                        len(review.get("critical_objections", [])),
+                    )
+                    break
+                machine.complete_safety_review(status, dict(review))
+                reason = (
+                    f"safety review still '{review['status']}' after "
+                    f"{revision} revision(s) — a mechanical block is never escalated"
+                )
+                machine.fail_with_fallback(reason)
+                raise PipelineFailure(reason)
+            machine.complete_safety_review(status, dict(review))
             revision += 1
             previous = self._revision_context(plan.to_dict(), review)
             with self._stage(f"tactical_planning_v{revision + 1}"):
@@ -613,20 +657,9 @@ class IncidentPipeline:
                     dict(plan), snapshot, self.unit_list
                 )
             reviews.append(review)
-            machine.complete_safety_review(
-                SafetyReviewStatus(review["status"]), dict(review)
-            )
-
-        if review["status"] != "pass":
-            reason = (
-                f"safety review still '{review['status']}' after "
-                f"{revision} revision(s) — refusing to fake a pass"
-            )
-            machine.fail_with_fallback(reason)
-            raise PipelineFailure(reason)
 
         # ---- human approval gate (programmatic for the E2E harness) -------
-        decision = self._approval_decision(plan)
+        decision = self._approval_decision(plan, escalated=escalated)
         machine.record_approval_decision(ApprovalDecision.APPROVE, dict(decision))
 
         # ---- Agent 5: Dispatch (only after approval) ----------------------

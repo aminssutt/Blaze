@@ -92,10 +92,25 @@ given, containing:
     - NEVER move a unit TOWARD a reported, unassessed hazard. Reconnaissance is
       done from the unit's CURRENT position or further away, with an explicit
       minimum stand-off distance in the `instruction` (300 m default) and an abort
-      criterion; state the retreat direction in the `instruction` too.
+      criterion; state the retreat direction in the `instruction` too. The words
+      "proceed to", "approach", "move to" the hazard area are FORBIDDEN in a
+      reconnaissance instruction — write "observe from your current position" /
+      "from the stand-off observation point" instead.
     - Retreat immediately on roads ROAD_GRAPH rates open and vehicle-compatible,
       citing the road graph. Do NOT task another unit to "confirm" such a route,
       and never make one unit's safety depend on another unit finishing a task.
+
+    Example `reconnaissance` action (observe from current position, never approach):
+
+    ```json
+    {"unit_id": "bravo-2", "action_type": "reconnaissance",
+     "instruction": "Bravo 2, observez le secteur du hangar DEPUIS VOTRE POSITION ACTUELLE, distance de sécurité minimum 300 mètres, n'approchez pas. Interrompez et repliez-vous par North Access au moindre signe d'aggravation.",
+     "route": null, "destination": null,
+     "reason": "Dense smoke and explosions reported at the hangar; assessment must not expose the crew.",
+     "priority": "critical", "evidence_ids": ["<a real RadioEvent id>"],
+     "confidence": 0.85, "human_approval_required": true,
+     "acknowledgement_required": true}
+    ```
 
     Example `confirm_access` action (note stand-off + retreat in the instruction):
 
