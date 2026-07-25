@@ -3,9 +3,11 @@
 // PRODUCT INVARIANT #1 — `dispatchUnlocked` is the single derived gate: it is
 // true ONLY after an approval.received event carrying decision === "approve".
 // This component never sets state itself — it drives the mock replay (phase
-// jumps) and lets the reduced events flow back through the store. Ticket #54
-// swaps the button handlers for POST /approval/decision calls; the rendering
-// below is already API-shaped (ApprovalDecision contract).
+// jumps) and lets the reduced events flow back through the store. Ticket #54:
+// in LIVE mode the same handler POSTs the real /approval/decision instead
+// (the resulting approval.received / plan.draft.ready events flow back through
+// the SSE stream); the rendering below is already API-shaped
+// (ApprovalDecision contract). Mock behaviour is byte-for-byte untouched.
 
 "use client";
 
@@ -15,6 +17,9 @@ import {
   usePlayerState,
   useSessionControls,
 } from "@/lib/session";
+import { isLiveMode } from "@/lib/streamMode";
+import { postApprovalDecision } from "@/lib/backendApi";
+import type { Decision } from "@/lib/contracts";
 import { Badge, Panel, StatusDot } from "@/components/ui";
 import type { PanelComponentProps } from "@/components/ui";
 
@@ -40,13 +45,38 @@ export default function ApprovalGate({ className }: PanelComponentProps) {
   const [note, setNote] = useState("");
   /** Note typed in THIS session, frozen at decision time for the audit trail. */
   const [sessionNote, setSessionNote] = useState<string | null>(null);
+  /** Ticket #54 — live-mode API call state (in flight / last failure). */
+  const [posting, setPosting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
+  const live = isLiveMode();
   const decisionPending = approvalRequested && !approval;
   const hasJump = (id: string) => player.jumpPoints.some((p) => p.id === id);
-  const decide = (target: string) => {
+
+  /**
+   * The ONE decision handler (#54). Mock: unchanged phase jump. Live: POST
+   * /approval/decision — no local state is set; the approval.received (and,
+   * on modify, plan.draft.ready v+1) events come back through the SSE stream.
+   */
+  const decide = (target: string, decision: Decision) => {
     setSessionNote(note.trim() || null);
-    controls.jumpTo(target);
+    if (!live) {
+      controls.jumpTo(target);
+      return;
+    }
+    if (!plan || posting) return;
+    setPosting(true);
+    setApiError(null);
+    postApprovalDecision(plan, decision, note.trim() || null)
+      .catch((err: unknown) => {
+        setApiError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => setPosting(false));
   };
+
+  /** Mock replay has no branch for `id` → disabled; live only needs a plan. */
+  const cannotDecide = (mockJumpId: string) =>
+    live ? !plan || posting : !hasJump(mockJumpId);
 
   const edited = changedActionIds(plans[plans.length - 2], plans[plans.length - 1]);
 
@@ -93,31 +123,59 @@ export default function ApprovalGate({ className }: PanelComponentProps) {
             <div className="flex gap-1.5" role="group" aria-label="Décision">
               <button
                 type="button"
-                onClick={() => decide("dispatch")}
-                disabled={!hasJump("dispatch")}
+                onClick={() => decide("dispatch", "approve")}
+                disabled={cannotDecide("dispatch")}
                 className="flex-1 rounded-sm border border-ok/60 bg-ok/10 px-2 py-1.5 font-mono text-[11px] font-semibold text-ok hover:border-ok disabled:cursor-not-allowed disabled:opacity-40"
-                title="Valide le plan et déclenche la phase de diffusion du replay"
+                title={
+                  live
+                    ? "Valide le plan via POST /approval/decision (backend réel)"
+                    : "Valide le plan et déclenche la phase de diffusion du replay"
+                }
               >
                 ✓ Approuver
               </button>
               <button
                 type="button"
-                onClick={() => decide("plan-v2")}
-                disabled={!hasJump("plan-v2")}
+                onClick={() => decide("plan-v2", "modify")}
+                disabled={cannotDecide("plan-v2")}
                 className="flex-1 rounded-sm border border-warn/60 bg-warn/10 px-2 py-1.5 font-mono text-[11px] font-semibold text-warn hover:border-warn disabled:cursor-not-allowed disabled:opacity-40"
-                title="Demande une révision : rejoue le scénario jusqu'à la version suivante du plan"
+                title={
+                  live
+                    ? "Demande une révision via POST /approval/decision — le backend émet la version suivante du plan"
+                    : "Demande une révision : rejoue le scénario jusqu'à la version suivante du plan"
+                }
               >
                 ✎ Modifier
               </button>
               <button
                 type="button"
-                disabled
-                className="flex-1 cursor-not-allowed rounded-sm border border-edge px-2 py-1.5 font-mono text-[11px] font-semibold text-muted opacity-40"
-                title="Pas de branche « rejet » dans le replay mock — activé avec l'API réelle (ticket #54)"
+                onClick={() => decide("", "reject")}
+                disabled={!live || !plan || posting}
+                className={
+                  live
+                    ? "flex-1 rounded-sm border border-alert/60 bg-alert-dim/20 px-2 py-1.5 font-mono text-[11px] font-semibold text-alert hover:border-alert disabled:cursor-not-allowed disabled:opacity-40"
+                    : "flex-1 cursor-not-allowed rounded-sm border border-edge px-2 py-1.5 font-mono text-[11px] font-semibold text-muted opacity-40"
+                }
+                title={
+                  live
+                    ? "Rejette le plan via POST /approval/decision (backend réel)"
+                    : "Pas de branche « rejet » dans le replay mock — activé en mode live (ticket #54)"
+                }
               >
                 ✕ Rejeter
               </button>
             </div>
+
+            {live && (posting || apiError) && (
+              <p
+                data-testid="approval-api-status"
+                className={`font-mono text-[10px] ${apiError ? "text-alert" : "text-faint"}`}
+              >
+                {apiError
+                  ? `échec de la décision : ${apiError}`
+                  : "envoi de la décision au backend…"}
+              </p>
+            )}
           </>
         )}
 

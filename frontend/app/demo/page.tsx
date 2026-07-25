@@ -32,6 +32,7 @@ import HeaderBar from "@/components/HeaderBar";
 import PlayerBar from "@/components/PlayerBar";
 import SystemBanners from "@/components/banners/SystemBanners";
 import DemoControls from "@/components/controls/DemoControls";
+import StreamModeToggle from "@/components/controls/StreamModeToggle";
 import TacticalMap from "@/components/map/TacticalMap";
 import RadioTimeline from "@/components/radio/RadioTimeline";
 import RadioEventCards from "@/components/radio/RadioEventCards";
@@ -72,7 +73,9 @@ export default function Home() {
       {/* demo row: #51 controls + the ticket #39 player bar */}
       <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-edge bg-surface px-3 py-1.5">
         <DemoControls />
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-3">
+          {/* ticket #54 — mock ↔ live source selector */}
+          <StreamModeToggle />
           <PlayerBar />
         </div>
       </div>
