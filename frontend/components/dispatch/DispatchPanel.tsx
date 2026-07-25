@@ -11,6 +11,7 @@ import { useState } from "react";
 import { useIncidentState } from "@/lib/session";
 import { getBackendBase, isLiveMode } from "@/lib/streamMode";
 import {
+  AudioPlayer,
   Badge,
   Panel,
   dispatchStatusLabel,
@@ -33,20 +34,17 @@ function TtsPlayer({ src, unitId }: { src: string; unitId: string }) {
   const [failed, setFailed] = useState(false);
   if (failed) {
     return (
-      <Badge variant="warn" title={`fichier audio indisponible : ${src}`}>
-        audio indisponible — texte seul
+      <Badge variant="warn" title={`audio file unavailable: ${src}`}>
+        audio unavailable — text only
       </Badge>
     );
   }
   // No <track> caption: the exact message_text is rendered next to the player.
   return (
-    <audio
-      controls
-      preload="none"
+    <AudioPlayer
       src={src}
       onError={() => setFailed(true)}
-      className="h-7 w-full"
-      aria-label={`Message audio TTS pour ${unitId}`}
+      ariaLabel={`TTS voice message for ${unitId}`}
     />
   );
 }
@@ -61,15 +59,15 @@ export default function DispatchPanel({ className }: PanelComponentProps) {
       <Panel
         className={className}
         id="dispatch-panel"
-        title="Diffusion aux unités"
+        title="Dispatch to units"
         right={
           <Badge variant="alert" filled title="Invariant produit #1">
-            verrouillé
+            locked
           </Badge>
         }
         empty
-        emptyLabel="diffusion verrouillée"
-        emptyHint="messages vocaux par unité — déverrouillés après validation du commandant"
+        emptyLabel="dispatch locked"
+        emptyHint="per-unit voice messages — unlocked once the commander approves"
       />
     );
   }
@@ -78,24 +76,24 @@ export default function DispatchPanel({ className }: PanelComponentProps) {
     <Panel
       className={className}
       id="dispatch-panel"
-      title="Diffusion aux unités"
-      subtitle={`${dispatchesSent}/${dispatches.length} transmis · simulé`}
+      title="Dispatch to units"
+      subtitle={`${dispatchesSent}/${dispatches.length} sent · simulated`}
       right={
         <span className="flex items-center gap-1.5">
           <Badge
             variant="info"
             title="Aucune transmission radio réelle — endpoint simulated_dispatch"
           >
-            diffusion simulée
+            simulated dispatch
           </Badge>
           <Badge variant="ok" filled>
-            déverrouillé
+            unlocked
           </Badge>
         </span>
       }
       empty={dispatches.length === 0}
-      emptyLabel="aucun message généré…"
-      emptyHint="messages vocaux par unité — en cours de génération après validation"
+      emptyLabel="no message generated yet…"
+      emptyHint="per-unit voice messages — generated after approval"
     >
       <ul className="flex flex-col gap-1.5">
         {dispatches.map((dispatch) => {
@@ -121,16 +119,16 @@ export default function DispatchPanel({ className }: PanelComponentProps) {
                     variant={tts.status === "ready" ? "ok" : "warn"}
                     title={tts.engine ?? undefined}
                   >
-                    tts {tts.status === "ready" ? "prêt" : "en cours"}
+                    tts {tts.status === "ready" ? "ready" : "running"}
                     {tts.latency_ms !== null ? ` · ${tts.latency_ms} ms` : ""}
                   </Badge>
                 )}
                 {dispatch.acknowledgement_required && (
                   <Badge
                     variant="info"
-                    title="L'unité doit accuser réception de ce message"
+                    title="The unit must acknowledge this message"
                   >
-                    accusé requis
+                    ack required
                   </Badge>
                 )}
               </div>

@@ -63,7 +63,7 @@ export default function Badge({
   return (
     <span
       title={title}
-      className={`inline-flex items-center whitespace-nowrap rounded-sm border px-1.5 py-px font-mono text-[10px] uppercase leading-4 tracking-wider ${style} ${className}`}
+      className={`inline-flex items-center whitespace-nowrap rounded-full border px-2 py-px font-mono text-[10px] leading-4 ${style} ${className}`}
     >
       {children}
     </span>

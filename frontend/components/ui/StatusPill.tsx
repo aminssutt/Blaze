@@ -64,7 +64,7 @@ export default function StatusPill({
       data-level={level}
       data-measured={measured}
       title={title}
-      className={`flex min-w-0 items-center gap-1.5 rounded-sm border border-edge bg-overlay px-2 py-1 ${className}`}
+      className={`flex min-w-0 items-center gap-1.5 rounded-full border border-edge bg-overlay px-2.5 py-1 ${className}`}
     >
       <StatusDot
         tone={LEVEL_TONE[level]}

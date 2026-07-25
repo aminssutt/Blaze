@@ -39,6 +39,7 @@ import SystemBanners from "@/components/banners/SystemBanners";
 import DemoControls from "@/components/controls/DemoControls";
 import StreamModeToggle from "@/components/controls/StreamModeToggle";
 import TacticalMap from "@/components/map/TacticalMap";
+import UnitsBoard from "@/components/units/UnitsBoard";
 import RadioTimeline from "@/components/radio/RadioTimeline";
 import RadioEventCards from "@/components/radio/RadioEventCards";
 import AgentTracePanel from "@/components/trace/AgentTracePanel";
@@ -47,7 +48,6 @@ import TacticalPlanPanel from "@/components/plan/TacticalPlanPanel";
 import SafetyCriticPanel from "@/components/safety/SafetyCriticPanel";
 import ApprovalGate from "@/components/approval/ApprovalGate";
 import DispatchPanel from "@/components/dispatch/DispatchPanel";
-import NvidiaMetricsPanel from "@/components/metrics/NvidiaMetricsPanel";
 
 /** Stacked below xl, a column of the single-screen grid at xl and up. */
 const COLUMN = "flex min-w-0 flex-col gap-2 xl:min-h-0";
@@ -60,13 +60,11 @@ const COLUMN = "flex min-w-0 flex-col gap-2 xl:min-h-0";
  */
 function ZoneBanner({ label, tagline }: { label: string; tagline: string }) {
   return (
-    <div className="flex min-w-0 shrink-0 items-baseline gap-1.5 rounded-sm border border-edge bg-surface px-2 py-1">
-      <span className="whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
+    <div className="flex min-w-0 shrink-0 items-baseline gap-1.5 rounded-full border border-edge bg-surface px-3 py-1">
+      <span className="whitespace-nowrap text-[11px] font-semibold text-foreground">
         {label}
       </span>
-      <span className="min-w-0 truncate font-mono text-[10px] text-faint">
-        — {tagline}
-      </span>
+      <span className="min-w-0 truncate text-[11px] text-faint">— {tagline}</span>
     </div>
   );
 }
@@ -116,19 +114,16 @@ export default function Home() {
         className="flex flex-col gap-2 xl:grid xl:min-h-0 xl:flex-1 xl:grid-cols-[26fr_44fr_30fr]"
         aria-label="Régions de la salle de commandement"
       >
-        {/* left — the radio stream becoming structured facts */}
+        {/* left — the chief's engines, then the radio truth feeding them */}
         <div className={COLUMN}>
-          <ZoneBanner label="📡 Sources" tagline="ce que le terrain rapporte" />
-          <RadioTimeline className="xl:flex-1" />
-          <RadioEventCards className="xl:flex-1" />
+          <ZoneBanner label="Engines" tagline="what each truck is doing" />
+          <UnitsBoard className="xl:flex-[3]" />
+          <RadioTimeline className="xl:flex-[2]" />
         </div>
 
         {/* centre — the dominant tactical picture and the plan it drives */}
         <div className={COLUMN}>
-          <ZoneBanner
-            label="🗺️ Situation"
-            tagline="ce que le système comprend"
-          />
+          <ZoneBanner label="Situation" tagline="what the system understands" />
           <TacticalMap className="xl:flex-[3]" />
           <TacticalPlanPanel className="xl:flex-[2]" />
         </div>
@@ -143,21 +138,19 @@ export default function Home() {
               : "border-accent-dim/60 bg-accent-dim/10"
           }`}
         >
-          <ZoneBanner
-            label="🎯 Décision"
-            tagline="ce que le commandant valide"
-          />
+          <ZoneBanner label="Decision" tagline="what the commander approves" />
           <SafetyCriticPanel className="xl:flex-[3]" />
           <ApprovalGate className="xl:flex-[2]" />
           <DispatchPanel className="xl:flex-[3]" />
         </div>
       </main>
 
-      {/* evidence rail — fixed height at xl, stacked below it */}
-      <div className="flex shrink-0 flex-col gap-2 xl:grid xl:h-[13.5rem] xl:grid-cols-[44fr_30fr_26fr]">
+      {/* evidence rail — fixed height at xl, stacked below it.
+          NVIDIA metrics intentionally absent: machine health lives in /system. */}
+      <div className="flex shrink-0 flex-col gap-2 xl:grid xl:h-[13.5rem] xl:grid-cols-[38fr_32fr_30fr]">
         <AgentTracePanel />
         <SituationSnapshotPanel />
-        <NvidiaMetricsPanel />
+        <RadioEventCards />
       </div>
     </div>
   );

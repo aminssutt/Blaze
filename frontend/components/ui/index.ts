@@ -3,6 +3,8 @@
 // Presentational, prop-driven components only: NOTHING in components/ui/
 // reads the incident store. Panels (#40–#51) import from "@/components/ui".
 
+export { default as AudioPlayer } from "./AudioPlayer";
+export type { AudioPlayerProps } from "./AudioPlayer";
 export { default as Panel } from "./Panel";
 export type { PanelProps } from "./Panel";
 export type { PanelComponentProps } from "./panelProps";

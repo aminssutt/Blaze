@@ -60,7 +60,7 @@ export default function RadioEventCards({ className }: PanelComponentProps) {
     <Panel
       className={className}
       id="radio-event-cards"
-      title="Événements structurés"
+      title="Structured events"
       subtitle={
         radioEvents.length > 0
           ? `${radioEvents.length} événements · ${corrections} correction(s)`

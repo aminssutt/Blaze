@@ -183,7 +183,7 @@ export default function HeaderBar() {
       {/* Modes — a network blackout must be unmistakable from the back row */}
       <div className="flex items-center gap-2.5 border-l border-edge pl-2.5">
         <ModePill
-          label="réseau"
+          label="network"
           testId="network-mode"
           title={
             networkKnown

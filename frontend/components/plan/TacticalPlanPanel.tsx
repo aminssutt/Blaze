@@ -240,7 +240,7 @@ export default function TacticalPlanPanel({ className }: PanelComponentProps) {
     <Panel
       className={className}
       id="tactical-plan"
-      title="Plan tactique"
+      title="Tactical plan"
       live={planning}
       subtitle={
         planning
@@ -281,8 +281,8 @@ export default function TacticalPlanPanel({ className }: PanelComponentProps) {
         </>
       }
       empty={!displayed}
-      emptyLabel="aucun plan…"
-      emptyHint="plan d'action proposé par le système — après la synthèse de situation"
+      emptyLabel="no plan yet…"
+      emptyHint="action plan proposed by the system — after the situation summary"
     >
       {displayed && (
         <div
