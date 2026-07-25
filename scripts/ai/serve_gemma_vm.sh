@@ -13,7 +13,10 @@
 # - The gemma4 tool-call chat template is not bundled; fetch it once:
 #     curl -o ~/tool_chat_template_gemma4.jinja \
 #       https://raw.githubusercontent.com/vllm-project/vllm/main/examples/tool_chat_template_gemma4.jinja
-# - --host 127.0.0.1 on purpose: nothing exposed publicly, access via SSH tunnel:
+# - Binds 0.0.0.0 by default so Docker containers (backend) can reach it via
+#   host.docker.internal; the provider firewall blocks every inbound port except
+#   SSH (verified), so nothing is actually exposed. Override with VLLM_BIND_HOST.
+# - Browser access stays via SSH tunnel:
 #     ssh -N -L 8000:localhost:8000 -L 8080:localhost:8080 -L 3000:localhost:3000 shadeform@<VM_IP>
 
 set -euo pipefail
@@ -28,7 +31,7 @@ if [ ! -f "$TEMPLATE" ]; then
 fi
 
 exec env VLLM_USE_FLASHINFER_SAMPLER=0 vllm serve "$MODEL" \
-  --host 127.0.0.1 --port 8000 \
+  --host "${VLLM_BIND_HOST:-0.0.0.0}" --port 8000 \
   --dtype bfloat16 \
   --max-model-len 8192 \
   --enable-auto-tool-choice \
