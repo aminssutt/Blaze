@@ -1,0 +1,8 @@
+{
+  "source": "VIIRS_SNPP_NRT",
+  "bbox_wsen": "2.5,42.8,5.0,44.2",
+  "days": 2,
+  "fetched_at": "2026-07-25T09:28:13Z",
+  "rows": 36,
+  "note": "Wider Occitanie sample with real hotspots, for offline/demo fallback rendering"
+}
