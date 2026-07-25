@@ -53,6 +53,25 @@ def test_every_adapter_serves_labeled_cache_offline(no_network):
     assert seeded["source_type"] == "seeded_demo"
 
 
+def test_all_five_audios_ingest_offline(no_network):
+    """Integration #56: the real audio ingestion path is file-only — all five
+    manifest audios flow with the network booby-trapped."""
+    import asyncio
+
+    from backend.loaders.audio_ingestion import AudioIngestionService
+    from backend.streaming.bus import EventBus
+
+    bus = EventBus("wildfire-demo-01")
+    counts = asyncio.run(
+        AudioIngestionService().ingest(bus, variant="radio", speed_factor=0)
+    )
+    assert counts == {"emitted": 5, "errors": 0}
+    received = [e for e in bus.history if e["event_type"] == "audio.received"]
+    assert [e["payload"]["audio_id"] for e in received] == [
+        "audio_01", "audio_02", "audio_03", "audio_04", "audio_05",
+    ]
+
+
 def test_full_scenario_run_completes_offline(no_network):
     client = TestClient(create_app())
     client.post("/incident/reset")
