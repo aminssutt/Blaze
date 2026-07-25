@@ -1,9 +1,11 @@
 // Page /monitor — the live pipeline graph (Astyr AgentGraph pattern, Blaze
 // tokens). Two bands map 1:1 onto the real event flow:
-//   ACQUISITION — 📻 Ingestion → 📝 STT → 🤖 Radio Intelligence →
-//                 🌍 Situation Context (+ the 7 tool mini-nodes);
-//   DÉCISION    — 🗺️ Tactical Planning → 🛡️ Safety Critic → 👤 HUMAN GATE
-//                 (special amber node) → 📢 Dispatch → 🔊 TTS.
+//   ACQUISITION — Ingestion → STT → Radio Intelligence →
+//                 Situation Context (+ the 7 tool mini-nodes);
+//   DÉCISION    — Tactical Planning → Safety Critic → HUMAN GATE
+//                 (special amber node) → Dispatch → TTS.
+// Each node carries a two-letter monogram badge (RA, ST, RI, SC, TP, SG, HG,
+// DP, TT — tools WX/EL/FS/CA/OS/RT/RS); the state colours carry the meaning.
 // Node statuses (standby / active / done) are DERIVED from the store by
 // lib/monitorPipeline.deriveNodeStatuses — this component only renders.
 // Connectors take the colour of their target's status and stream an animated
@@ -198,6 +200,24 @@ function WorkingDots() {
 /* Node card (shared desktop/mobile content)                                  */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Two-letter monogram badge — the professional replacement of node emojis.
+ * Discreet by design: the node state (border/background colours) keeps
+ * carrying the meaning; the badge only identifies the node.
+ */
+function MonogramBadge({ mono, size = "md" }: { mono: string; size?: "sm" | "md" }) {
+  return (
+    <span
+      aria-hidden
+      className={`grid shrink-0 place-items-center rounded-sm border border-edge-strong bg-overlay font-mono font-semibold tracking-[0.08em] text-muted ${
+        size === "sm" ? "size-5 text-[9px]" : "size-7 text-[11px]"
+      }`}
+    >
+      {mono}
+    </span>
+  );
+}
+
 function NodeCardContent({
   id,
   status,
@@ -215,9 +235,7 @@ function NodeCardContent({
   const statusCls = gateActive ? "text-accent" : style.text;
   return (
     <>
-      <span className={compact ? "text-xl leading-none" : "text-2xl leading-none"} aria-hidden>
-        {info.emoji}
-      </span>
+      <MonogramBadge mono={info.mono} size={compact ? "sm" : "md"} />
       <span className="flex min-w-0 flex-col items-center gap-0.5">
         <span
           className={`leading-tight text-foreground ${compact ? "text-[12px]" : "text-[13px]"} font-semibold`}
@@ -485,9 +503,7 @@ export default function PipelineGraph({
                   }}
                   transition={{ duration: 0.3 }}
                 >
-                  <span aria-hidden className="text-sm leading-none">
-                    {tool.emoji}
-                  </span>
+                  <MonogramBadge mono={tool.mono} size="sm" />
                   <span className="min-w-0 truncate font-mono text-[11px] text-foreground/90">
                     {tool.name}
                   </span>
@@ -543,7 +559,9 @@ export default function PipelineGraph({
                         onClick={() => onSelect(tid === selected ? null : tid)}
                         className={`inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 font-mono text-[10px] ${STATUS_STYLE[tStatus].card} ${STATUS_STYLE[tStatus].text}`}
                       >
-                        <span aria-hidden>{tool.emoji}</span>
+                        <span aria-hidden className="font-semibold">
+                          {tool.mono}
+                        </span>
                         {tool.name}
                       </button>
                     );

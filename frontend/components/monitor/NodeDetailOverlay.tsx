@@ -170,8 +170,11 @@ export default function NodeDetailOverlay({
             {/* header */}
             <header className="flex shrink-0 items-start justify-between gap-4 border-b border-edge bg-surface px-4 py-3">
               <div className="flex min-w-0 items-center gap-3">
-                <span className="text-2xl leading-none" aria-hidden>
-                  {info.emoji}
+                <span
+                  aria-hidden
+                  className="grid size-9 shrink-0 place-items-center rounded-md border border-edge-strong bg-overlay font-mono text-[13px] font-semibold tracking-[0.08em] text-muted"
+                >
+                  {info.mono}
                 </span>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
