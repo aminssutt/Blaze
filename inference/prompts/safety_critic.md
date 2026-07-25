@@ -46,7 +46,7 @@ Respond with ONLY a JSON object matching the provided schema:
 
 ```json
 {
-  "recommended_status": "pass | revise | block",
+  "recommended_status": "DERIVED, not chosen: 'pass' when there is no mechanical fail and none of YOUR objections is material; 'revise' only when you emit >=1 material objection; 'block' only when a mechanical fail already blocks",
   "objections": [
     {
       "objection": "one material risk, concrete and specific",
@@ -130,5 +130,7 @@ Worked examples (grade like this):
 
 FINAL CHECK before you answer — apply mechanically: if NO objection passed test 1
 (quoted plan text, absent mitigation), then every objection MUST carry
-`severity: "minor"` and `recommended_status` MUST be `"pass"`. Any other combination
-is a grading error.
+`severity: "minor"` and `recommended_status` MUST be `"pass"`. Emitting
+`recommended_status: "revise"` while all your objections are `minor` is a
+contradiction and a grading error: with only minor objections the ONLY valid value
+is `"pass"`. The status is derived from your objections, never chosen independently.
