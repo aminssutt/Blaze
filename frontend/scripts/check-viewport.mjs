@@ -10,15 +10,29 @@
  * Requires a running server (npm run build && npx next start -p 3111).
  */
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { mkdtempSync, existsSync } from "node:fs";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const URL_ = process.argv[2] ?? "http://localhost:3111/";
 const WIDTH = Number(process.argv[3] ?? 1920);
 const HEIGHT = Number(process.argv[4] ?? 1080);
-const PORT = 9333;
+
+/**
+ * Ask the OS for a free port instead of hardcoding one. A fixed port made a
+ * second run collide with a browser the previous run had failed to reap,
+ * which hung the script forever with no output at all.
+ */
+const PORT = await new Promise((res, rej) => {
+  const srv = createServer();
+  srv.on("error", rej);
+  srv.listen(0, "127.0.0.1", () => {
+    const { port } = srv.address();
+    srv.close(() => res(port));
+  });
+});
 
 const CANDIDATES = [
   "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
@@ -44,6 +58,12 @@ const child = spawn(
     "--no-first-run",
     "--no-default-browser-check",
     "--disable-gpu",
+    // The replay engine is timer-driven. Headless Chrome treats the page as
+    // backgrounded/occluded and throttles setTimeout to a crawl, so the stream
+    // would sit at 0/70 forever. These three keep timers running at full rate.
+    "--disable-background-timer-throttling",
+    "--disable-backgrounding-occluded-windows",
+    "--disable-renderer-backgrounding",
     "about:blank",
   ],
   { stdio: "ignore" },
@@ -66,12 +86,59 @@ async function target() {
   throw new Error("DevTools endpoint never became available");
 }
 
+/**
+ * Kill the browser AND its children. On Windows `child.kill()` only kills the
+ * launcher: the renderer/gpu/utility processes survive and keep holding the
+ * debug port, which is what wedged the previous run.
+ */
+function killBrowser() {
+  try {
+    if (process.platform === "win32") {
+      spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
+        stdio: "ignore",
+      });
+    } else {
+      process.kill(-child.pid, "SIGKILL");
+    }
+  } catch {
+    /* already gone */
+  }
+  try {
+    child.kill();
+  } catch {
+    /* already gone */
+  }
+}
+
+// Never leave a headless browser behind, whatever happens below.
+process.on("exit", killBrowser);
+for (const sig of ["SIGINT", "SIGTERM"]) {
+  process.on(sig, () => {
+    killBrowser();
+    process.exit(1);
+  });
+}
+
+/** Reject instead of hanging forever when a step never settles. */
+function withTimeout(promise, ms, what) {
+  return Promise.race([
+    promise,
+    new Promise((_, rej) =>
+      setTimeout(() => rej(new Error(`timed out after ${ms}ms: ${what}`)), ms),
+    ),
+  ]);
+}
+
 const wsUrl = await target();
 const ws = new WebSocket(wsUrl);
-await new Promise((res, rej) => {
-  ws.onopen = res;
-  ws.onerror = rej;
-});
+await withTimeout(
+  new Promise((res, rej) => {
+    ws.onopen = res;
+    ws.onerror = () => rej(new Error("DevTools WebSocket failed to open"));
+  }),
+  15000,
+  "DevTools WebSocket open",
+);
 
 let id = 0;
 const pending = new Map();
@@ -106,27 +173,75 @@ await sleep(3500); // load + hydrate + arm the mock stream
 // `--play` replays the whole mock stream at x5 first: an empty control room
 // never overflows, so the layout must be measured FULL of scenario content.
 if (process.argv.includes("--play")) {
-  await send("Runtime.evaluate", {
-    expression: `(() => {
-      const btn = [...document.querySelectorAll("button")];
-      const x5 = btn.find((b) => b.textContent.trim() === "x5");
-      if (x5) x5.click();
-      const play = btn.find((b) => /play/i.test(b.textContent));
-      if (play) play.click();
-      return !!x5 + "/" + !!play;
-    })()`,
-    returnByValue: true,
-  });
-  // 160 s of scenario at x5 = 32 s, plus margin for the final renders.
-  for (let i = 0; i < 45; i += 1) {
-    await sleep(1000);
-    const { result: r } = await send("Runtime.evaluate", {
-      expression: `document.body.innerText.includes("70/70") || /event 70\\s*\\/\\s*70/.test(document.body.innerText)`,
+  const evalJs = async (expression) => {
+    const { result } = await send("Runtime.evaluate", {
+      expression,
       returnByValue: true,
     });
-    if (r.value) break;
+    return result.value;
+  };
+
+  /** `event N/T` straight off the player bar; null before the stream loads. */
+  const position = () =>
+    evalJs(`(() => {
+      const t = document.getElementById("player-bar")?.innerText || "";
+      const m = t.match(/event\\s+(\\d+)\\s*\\/\\s*(\\d+)/);
+      return m ? { pos: +m[1], total: +m[2] } : null;
+    })()`);
+
+  // The Play button stays disabled while the mock JSONL is being fetched and
+  // validated. Clicking it before then is a silent no-op — which is exactly
+  // how this check used to report PASS against an empty control room.
+  let armed = false;
+  for (let i = 0; i < 60; i += 1) {
+    armed = await evalJs(`(() => {
+      const b = [...document.querySelectorAll("button")]
+        .find((b) => /play|replay/i.test(b.textContent));
+      return b ? !b.disabled : false;
+    })()`);
+    if (armed) break;
+    await sleep(500);
   }
-  await sleep(1500);
+  if (!armed) {
+    console.error("FAIL: the player never became ready — nothing was replayed.");
+    process.exit(1);
+  }
+
+  const clicked = await evalJs(`(() => {
+    const btn = [...document.querySelectorAll("button")];
+    const x5 = btn.find((b) => b.textContent.trim() === "x5");
+    if (x5) x5.click();
+    const play = btn.find((b) => /play|replay/i.test(b.textContent));
+    if (play) play.click();
+    return { x5: !!x5, play: !!play };
+  })()`);
+  if (!clicked.play) {
+    console.error("FAIL: no Play button found — nothing was replayed.");
+    process.exit(1);
+  }
+
+  // Poll to the END of the stream. Do NOT fall through to measuring a room
+  // that never filled: silence here is a false PASS, not a success.
+  const started = Date.now();
+  let last = null;
+  let done = false;
+  while (Date.now() - started < 120000) {
+    await sleep(1000);
+    last = await position();
+    if (last && last.total > 0 && last.pos >= last.total) {
+      done = true;
+      break;
+    }
+  }
+  if (!done) {
+    console.error(
+      `FAIL: stream never reached the end (${last ? `${last.pos}/${last.total}` : "no position"}). ` +
+        "The layout would have been measured on an empty control room.",
+    );
+    process.exit(1);
+  }
+  console.log(`replayed            ${last.pos}/${last.total} events`);
+  await sleep(2000); // let the final renders settle
 }
 
 const probe = `(() => {
@@ -240,7 +355,7 @@ await send("Page.captureScreenshot", { format: "png" })
   .catch(() => {});
 
 ws.close();
-child.kill();
+killBrowser();
 
 const belowFold = Object.entries(data.regions).filter(
   ([, b]) => b && b.bottom > HEIGHT + 1,
