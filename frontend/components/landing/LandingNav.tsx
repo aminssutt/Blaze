@@ -9,7 +9,6 @@ import Link from "next/link";
 const ANCHORS = [
   { id: "why-now", label: "Why now" },
   { id: "how-it-works", label: "How it works" },
-  { id: "proof", label: "Measured" },
 ];
 
 function scrollToSection(id: string) {
