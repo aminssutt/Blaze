@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blaze.local/contracts/schemas/situation_snapshot.schema.json",
+  "title": "SituationSnapshot",
+  "description": "Normalized picture of the incident produced by the Situation Context Agent, with explicit provenance.",
+  "type": "object",
+  "properties": {
+    "incident_id": {
+      "type": "string",
+      "description": "Identifier of the incident."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Snapshot version, incremented on each rebuild."
+    },
+    "radio_events": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Identifiers of the RadioEvents incorporated in this snapshot."
+    },
+    "weather": {
+      "type": ["object", "null"],
+      "description": "Normalized weather state (temperature, humidity, wind speed/direction/gusts)."
+    },
+    "terrain": {
+      "type": ["object", "null"],
+      "description": "Normalized terrain state (elevation, slope estimate)."
+    },
+    "fire_hotspots": {
+      "type": "array",
+      "items": { "type": "object" },
+      "description": "Detected or cached fire hotspots."
+    },
+    "roads": {
+      "type": "array",
+      "items": { "type": "object" },
+      "description": "Road segments with current status and vehicle restrictions."
+    },
+    "buildings_and_parcels": {
+      "type": "array",
+      "items": { "type": "object" },
+      "description": "Relevant cadastral buildings and parcels."
+    },
+    "critical_assets": {
+      "type": "array",
+      "items": { "type": "object" },
+      "description": "Vulnerable or critical assets (camping, water points, infrastructure)."
+    },
+    "units": {
+      "type": "array",
+      "items": { "type": "object" },
+      "description": "Current unit states."
+    },
+    "resources": {
+      "type": "array",
+      "items": { "type": "object" },
+      "description": "Current resource states."
+    },
+    "known_facts": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Facts considered established."
+    },
+    "uncertain_facts": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Facts that remain uncertain."
+    },
+    "conflicts": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Unresolved contradictions between sources."
+    },
+    "missing_information": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Information identified as missing."
+    },
+    "provenance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": { "type": "string", "description": "Snapshot field the provenance applies to." },
+          "source_type": {
+            "type": "string",
+            "enum": ["live_public", "cached_public", "seeded_demo", "human_report", "model_inference"],
+            "description": "Provenance category."
+          },
+          "source_name": { "type": "string", "description": "Human-readable source." },
+          "retrieved_at": { "type": "string", "format": "date-time", "description": "Retrieval time." }
+        },
+        "required": ["field", "source_type", "source_name"]
+      },
+      "description": "Per-field data provenance."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Snapshot generation time (ISO 8601)."
+    }
+  },
+  "required": [
+    "incident_id",
+    "version",
+    "radio_events",
+    "known_facts",
+    "uncertain_facts",
+    "conflicts",
+    "missing_information",
+    "provenance",
+    "generated_at"
+  ]
+}

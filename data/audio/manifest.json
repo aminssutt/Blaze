@@ -1,0 +1,47 @@
+[
+  {
+    "audio_id": "audio_01",
+    "scenario_timestamp": 0,
+    "speaker_hint": "Alpha 3",
+    "clean_path": "data/audio/01_alpha_initial_clean.wav",
+    "radio_path": "data/audio/01_alpha_initial_radio.wav",
+    "reference_transcript": "Alpha 3 au PC, fumée noire très dense près du hangar. La D17 est bloquée pour notre CCF et on entend plusieurs explosions.",
+    "expected_event_types": ["hazard_report", "road_status"]
+  },
+  {
+    "audio_id": "audio_02",
+    "scenario_timestamp": 25,
+    "speaker_hint": "Alpha 3",
+    "clean_path": "data/audio/02_alpha_resources_clean.wav",
+    "radio_path": "data/audio/02_alpha_resources_radio.wav",
+    "reference_transcript": "Alpha 3, mise à jour : il nous reste environ trente pour cent d'eau et la visibilité devient presque nulle.",
+    "expected_event_types": ["resource_update"]
+  },
+  {
+    "audio_id": "audio_03",
+    "scenario_timestamp": 50,
+    "speaker_hint": "Bravo 2",
+    "clean_path": "data/audio/03_bravo_wind_clean.wav",
+    "radio_path": "data/audio/03_bravo_wind_radio.wav",
+    "reference_transcript": "Bravo 2 au PC, le vent vient de tourner vers le sud-est. Le feu progresse beaucoup plus vite vers la D17.",
+    "expected_event_types": ["wind_update"]
+  },
+  {
+    "audio_id": "audio_04",
+    "scenario_timestamp": 70,
+    "speaker_hint": "Charlie 1",
+    "clean_path": "data/audio/04_charlie_correction_clean.wav",
+    "radio_path": "data/audio/04_charlie_correction_radio.wav",
+    "reference_transcript": "Charlie 1 au PC, correction : la D17 n'est pas totalement bloquée. Les véhicules légers passent encore, mais pas les CCF.",
+    "expected_event_types": ["correction"]
+  },
+  {
+    "audio_id": "audio_05",
+    "scenario_timestamp": 95,
+    "speaker_hint": "Bravo 2",
+    "clean_path": "data/audio/05_bravo_confirmation_clean.wav",
+    "radio_path": "data/audio/05_bravo_confirmation_radio.wav",
+    "reference_transcript": "Bravo 2 au PC, explosions confirmées derrière le hangar. Présence possible de bouteilles de gaz. On reste à distance.",
+    "expected_event_types": ["confirmation", "hazard_report"]
+  }
+]

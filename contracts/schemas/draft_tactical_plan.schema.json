@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blaze.local/contracts/schemas/draft_tactical_plan.schema.json",
+  "title": "DraftTacticalPlan",
+  "description": "Versioned operational plan proposed by the Tactical Fusion and Planning Agent. Never dispatched without human approval.",
+  "type": "object",
+  "properties": {
+    "plan_id": {
+      "type": "string",
+      "description": "Unique identifier of this plan version."
+    },
+    "incident_id": {
+      "type": "string",
+      "description": "Identifier of the incident."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Plan version, incremented on each revision."
+    },
+    "summary": {
+      "type": "string",
+      "description": "Concise summary of the plan."
+    },
+    "objectives": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Operational objectives."
+    },
+    "unit_actions": {
+      "type": "array",
+      "items": { "$ref": "unit_action.schema.json" },
+      "description": "Proposed per-unit actions."
+    },
+    "rejected_options": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "option": { "type": "string", "description": "Rejected alternative." },
+          "reason": { "type": "string", "description": "Why it was rejected." }
+        },
+        "required": ["option", "reason"]
+      },
+      "description": "Alternatives considered and rejected."
+    },
+    "assumptions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Assumptions the plan relies on."
+    },
+    "uncertainties": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Unresolved uncertainties."
+    },
+    "evidence_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Identifiers of supporting evidence."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Plan creation time (ISO 8601)."
+    }
+  },
+  "required": [
+    "plan_id",
+    "incident_id",
+    "version",
+    "summary",
+    "objectives",
+    "unit_actions",
+    "created_at"
+  ]
+}

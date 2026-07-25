@@ -1,0 +1,49 @@
+{
+  "source_type": "seeded_demo",
+  "source_name": "scenario-resources",
+  "scenario_id": "wildfire-demo-01",
+  "resources": [
+    {
+      "resource_id": "water-point-2",
+      "name": "Water Point 2",
+      "type": "water_point",
+      "status": "available",
+      "capacity_liters": 30000,
+      "access_routes": ["north-access"],
+      "position": { "lat": 43.4601, "lon": 3.7382 }
+    },
+    {
+      "resource_id": "ccf-reserve-1",
+      "name": "Reserve CCF",
+      "type": "vehicle",
+      "vehicle_type": "CCF",
+      "status": "unavailable",
+      "note": "Engaged on another sector, not available for this incident",
+      "position": null
+    },
+    {
+      "resource_id": "recon-capability-1",
+      "name": "Reconnaissance capability (Bravo 2)",
+      "type": "capability",
+      "status": "available",
+      "provided_by": "bravo-2",
+      "position": null
+    },
+    {
+      "resource_id": "hangar-zone",
+      "name": "Industrial hangar",
+      "type": "industrial_building",
+      "status": "hazard_suspected",
+      "note": "Possible gas cylinders stored inside",
+      "position": { "lat": 43.4552, "lon": 3.7561 }
+    },
+    {
+      "resource_id": "camping-les-pins",
+      "name": "Camping Les Pins",
+      "type": "vulnerable_area",
+      "status": "occupied",
+      "estimated_occupants": 120,
+      "position": { "lat": 43.4508, "lon": 3.7650 }
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blaze.local/contracts/schemas/radio_event.schema.json",
+  "title": "RadioEvent",
+  "description": "Structured operational event extracted from one radio transcript by the Radio Intelligence Agent.",
+  "type": "object",
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "description": "Unique identifier of this radio event."
+    },
+    "audio_id": {
+      "type": "string",
+      "description": "Identifier of the source audio message."
+    },
+    "unit_id": {
+      "type": ["string", "null"],
+      "description": "Identified speaking unit (e.g. alpha-3), null if unknown."
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "hazard_report",
+        "resource_update",
+        "road_status",
+        "wind_update",
+        "correction",
+        "confirmation",
+        "position_update",
+        "other"
+      ],
+      "description": "Category of the extracted operational event."
+    },
+    "location_reference": {
+      "type": ["string", "null"],
+      "description": "Location mentioned in the message (e.g. hangar, D17), null if none."
+    },
+    "facts": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Atomic facts extracted from the message."
+    },
+    "urgency": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"],
+      "description": "Assessed urgency of the event."
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Extraction confidence between 0 and 1."
+    },
+    "confirmation_status": {
+      "type": "string",
+      "enum": ["reported", "inferred", "confirmed"],
+      "description": "Whether the fact is reported, inferred, or field-confirmed."
+    },
+    "is_correction": {
+      "type": "boolean",
+      "description": "True if this event corrects a previous event."
+    },
+    "corrects_event_id": {
+      "type": ["string", "null"],
+      "description": "Identifier of the corrected event, null if not a correction."
+    },
+    "uncertainties": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Open uncertainties attached to this event."
+    },
+    "evidence_text": {
+      "type": "string",
+      "description": "Exact transcript span supporting this event."
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Time the observation was made (ISO 8601)."
+    },
+    "source_type": {
+      "type": "string",
+      "const": "human_report",
+      "description": "Always human_report for radio events."
+    }
+  },
+  "required": [
+    "event_id",
+    "audio_id",
+    "event_type",
+    "facts",
+    "urgency",
+    "confidence",
+    "confirmation_status",
+    "is_correction",
+    "evidence_text",
+    "observed_at",
+    "source_type"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blaze.local/contracts/schemas/approval_decision.schema.json",
+  "title": "ApprovalDecision",
+  "description": "Explicit decision of the human incident commander on a tactical plan. Dispatch is impossible without it.",
+  "type": "object",
+  "properties": {
+    "decision_id": {
+      "type": "string",
+      "description": "Unique identifier of this decision."
+    },
+    "plan_id": {
+      "type": "string",
+      "description": "Identifier of the plan version being decided."
+    },
+    "decision": {
+      "type": "string",
+      "enum": ["approve", "modify", "reject"],
+      "description": "Commander decision."
+    },
+    "operator_name": {
+      "type": "string",
+      "description": "Name or role of the deciding operator."
+    },
+    "operator_note": {
+      "type": ["string", "null"],
+      "description": "Optional operator note, null if none."
+    },
+    "modified_actions": {
+      "type": "array",
+      "items": { "$ref": "unit_action.schema.json" },
+      "description": "Operator-modified actions when decision is modify."
+    },
+    "decided_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Decision time (ISO 8601)."
+    }
+  },
+  "required": [
+    "decision_id",
+    "plan_id",
+    "decision",
+    "operator_name",
+    "decided_at"
+  ]
+}

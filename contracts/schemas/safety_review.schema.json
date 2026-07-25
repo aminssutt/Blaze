@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blaze.local/contracts/schemas/safety_review.schema.json",
+  "title": "SafetyReview",
+  "description": "Adversarial safety review of a draft tactical plan produced by the Safety Critic Agent.",
+  "type": "object",
+  "properties": {
+    "review_id": {
+      "type": "string",
+      "description": "Unique identifier of this review."
+    },
+    "plan_id": {
+      "type": "string",
+      "description": "Identifier of the reviewed plan version."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pass", "revise", "block"],
+      "description": "Review outcome."
+    },
+    "critical_objections": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Material risks found in the plan."
+    },
+    "required_changes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Changes required before the plan can pass."
+    },
+    "required_confirmations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Field confirmations required before or after approval."
+    },
+    "rule_checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rule_id": { "type": "string", "description": "Identifier of the safety rule checked." },
+          "passed": { "type": "boolean", "description": "Whether the rule check passed." },
+          "detail": { "type": "string", "description": "Short check result explanation." }
+        },
+        "required": ["rule_id", "passed"]
+      },
+      "description": "Explicit safety-rule check results."
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Review time (ISO 8601)."
+    }
+  },
+  "required": [
+    "review_id",
+    "plan_id",
+    "status",
+    "critical_objections",
+    "required_changes",
+    "rule_checks",
+    "reviewed_at"
+  ]
+}

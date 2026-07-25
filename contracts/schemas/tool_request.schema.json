@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blaze.local/contracts/schemas/tool_request.schema.json",
+  "title": "ToolRequest",
+  "description": "A tool call requested by a Gemma agent, validated and executed by the deterministic tool layer.",
+  "type": "object",
+  "properties": {
+    "tool_call_id": {
+      "type": "string",
+      "description": "Unique identifier of this tool call."
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "Identifier of the requesting agent (e.g. situation_context)."
+    },
+    "tool_name": {
+      "type": "string",
+      "description": "Allowlisted tool name (e.g. weather, elevation, firms, cadastre, osm, routing, resources)."
+    },
+    "arguments": {
+      "type": "object",
+      "description": "Tool arguments as validated key/value pairs."
+    },
+    "reason": {
+      "type": "string",
+      "description": "Concise agent rationale for requesting this tool."
+    },
+    "requested_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Request time (ISO 8601)."
+    }
+  },
+  "required": [
+    "tool_call_id",
+    "agent_id",
+    "tool_name",
+    "arguments",
+    "requested_at"
+  ]
+}

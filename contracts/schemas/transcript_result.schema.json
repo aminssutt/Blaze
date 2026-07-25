@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blaze.local/contracts/schemas/transcript_result.schema.json",
+  "title": "TranscriptResult",
+  "description": "Output of the local speech-to-text service for one audio message.",
+  "type": "object",
+  "properties": {
+    "audio_id": {
+      "type": "string",
+      "description": "Identifier of the transcribed audio message."
+    },
+    "text": {
+      "type": "string",
+      "description": "Full transcript text."
+    },
+    "language": {
+      "type": "string",
+      "description": "Detected or hinted language code (e.g. fr)."
+    },
+    "segments": {
+      "type": "array",
+      "description": "Time-aligned transcript segments.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "start": { "type": "number", "description": "Segment start time in seconds." },
+          "end": { "type": "number", "description": "Segment end time in seconds." },
+          "text": { "type": "string", "description": "Segment text." },
+          "confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Segment confidence when available." }
+        },
+        "required": ["start", "end", "text"]
+      }
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Transcription start time (ISO 8601)."
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Transcription completion time (ISO 8601)."
+    },
+    "latency_ms": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Measured transcription latency in milliseconds."
+    },
+    "model_name": {
+      "type": "string",
+      "description": "Local STT model identifier (e.g. faster-whisper-small)."
+    },
+    "fallback_used": {
+      "type": "boolean",
+      "description": "True if a fallback (clean audio or reference transcript) was used."
+    }
+  },
+  "required": [
+    "audio_id",
+    "text",
+    "language",
+    "started_at",
+    "completed_at",
+    "latency_ms",
+    "model_name",
+    "fallback_used"
+  ]
+}

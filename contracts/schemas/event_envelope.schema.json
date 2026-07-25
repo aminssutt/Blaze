@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blaze.local/contracts/schemas/event_envelope.schema.json",
+  "title": "EventEnvelope",
+  "description": "Envelope wrapping every event streamed from the backend to the frontend.",
+  "type": "object",
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "description": "Unique identifier of this event."
+    },
+    "incident_id": {
+      "type": "string",
+      "description": "Identifier of the incident this event belongs to."
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "incident.started",
+        "audio.received",
+        "transcription.started",
+        "transcript.ready",
+        "radio_agent.started",
+        "radio_event.extracted",
+        "context_agent.started",
+        "tool.call.requested",
+        "tool.call.completed",
+        "situation.snapshot.ready",
+        "planning.started",
+        "plan.draft.ready",
+        "safety_review.started",
+        "safety_review.ready",
+        "approval.requested",
+        "approval.received",
+        "plan.revision.requested",
+        "dispatch.started",
+        "dispatch.instruction.ready",
+        "tts.started",
+        "tts.ready",
+        "dispatch.sent",
+        "metric.updated",
+        "network.mode.changed",
+        "fallback.activated",
+        "error",
+        "incident.completed"
+      ],
+      "description": "Type of the wrapped event."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Emission time (ISO 8601)."
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonically increasing sequence number within the incident."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Event-type-specific payload (see the matching contract schema)."
+    }
+  },
+  "required": [
+    "event_id",
+    "incident_id",
+    "event_type",
+    "timestamp",
+    "sequence",
+    "payload"
+  ]
+}

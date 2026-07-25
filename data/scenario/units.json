@@ -1,0 +1,56 @@
+{
+  "source_type": "seeded_demo",
+  "source_name": "scenario-units",
+  "scenario_id": "wildfire-demo-01",
+  "units": [
+    {
+      "unit_id": "alpha-3",
+      "callsign": "Alpha 3",
+      "vehicle_type": "CCF",
+      "crew_size": 4,
+      "mission": "suppression",
+      "assigned_sector": "B12",
+      "assigned_route": "d17",
+      "water_pct": 65,
+      "status": "en_route",
+      "position": { "lat": 43.4515, "lon": 3.7490 }
+    },
+    {
+      "unit_id": "bravo-2",
+      "callsign": "Bravo 2",
+      "vehicle_type": "light_vehicle",
+      "crew_size": 2,
+      "mission": "reconnaissance",
+      "assigned_sector": "hangar-zone",
+      "assigned_route": null,
+      "water_pct": null,
+      "status": "available",
+      "position": { "lat": 43.4570, "lon": 3.7620 }
+    },
+    {
+      "unit_id": "charlie-1",
+      "callsign": "Charlie 1",
+      "vehicle_type": "light_vehicle",
+      "crew_size": 2,
+      "mission": "route_confirmation",
+      "assigned_sector": "d17-corridor",
+      "assigned_route": "d17",
+      "water_pct": null,
+      "status": "available",
+      "position": { "lat": 43.4460, "lon": 3.7440 }
+    },
+    {
+      "unit_id": "command-post",
+      "callsign": "PC",
+      "vehicle_type": "command_post",
+      "crew_size": 3,
+      "mission": "command",
+      "assigned_sector": null,
+      "assigned_route": null,
+      "water_pct": null,
+      "status": "active",
+      "position": { "lat": 43.4470, "lon": 3.7420 },
+      "role": "human_approval_authority"
+    }
+  ]
+}

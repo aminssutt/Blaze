@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blaze.local/contracts/schemas/tool_result.schema.json",
+  "title": "ToolResult",
+  "description": "Result of an executed tool call, with full provenance and cache/staleness information.",
+  "type": "object",
+  "properties": {
+    "tool_call_id": {
+      "type": "string",
+      "description": "Identifier of the originating tool call."
+    },
+    "tool_name": {
+      "type": "string",
+      "description": "Executed tool name."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["success", "error", "timeout", "fallback"],
+      "description": "Execution outcome."
+    },
+    "data": {
+      "type": ["object", "array", "null"],
+      "description": "Structured tool output, null on error."
+    },
+    "source_type": {
+      "type": "string",
+      "enum": ["live_public", "cached_public", "seeded_demo", "human_report", "model_inference"],
+      "description": "Provenance category of the returned data."
+    },
+    "source_name": {
+      "type": "string",
+      "description": "Human-readable source (e.g. open-meteo, nasa-firms, cadastre-etalab)."
+    },
+    "retrieved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Time the data was retrieved by the tool layer (ISO 8601)."
+    },
+    "data_timestamp": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Timestamp of the underlying data itself, null if unknown."
+    },
+    "is_cached": {
+      "type": "boolean",
+      "description": "True if served from local cache."
+    },
+    "staleness_seconds": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Age of the data in seconds, null if unknown."
+    },
+    "error": {
+      "type": ["string", "null"],
+      "description": "Error message when status is not success, null otherwise."
+    }
+  },
+  "required": [
+    "tool_call_id",
+    "tool_name",
+    "status",
+    "source_type",
+    "source_name",
+    "retrieved_at",
+    "is_cached"
+  ]
+}

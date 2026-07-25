@@ -1,0 +1,38 @@
+# Secrets
+.env
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+dist/
+*.tsbuildinfo
+
+# Model weights & large local artifacts (downloaded, never committed)
+models/
+*.gguf
+*.safetensors
+*.onnx
+whisper-models/
+piper-voices/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Logs & temp
+*.log
+tmp/

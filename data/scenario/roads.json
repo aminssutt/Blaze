@@ -1,0 +1,49 @@
+{
+  "source_type": "seeded_demo",
+  "source_name": "scenario-roads",
+  "scenario_id": "wildfire-demo-01",
+  "roads": [
+    {
+      "road_id": "d17",
+      "name": "D17",
+      "type": "departmental_road",
+      "initial_status": "open",
+      "allowed_vehicle_types": ["CCF", "light_vehicle", "command_post"],
+      "restrictions": [],
+      "note": "Initially open to all vehicles; scenario updates restrict it to light vehicles only",
+      "geometry": [
+        { "lat": 43.4450, "lon": 3.7400 },
+        { "lat": 43.4500, "lon": 3.7480 },
+        { "lat": 43.4550, "lon": 3.7560 }
+      ]
+    },
+    {
+      "road_id": "north-access",
+      "name": "North Access",
+      "type": "access_road",
+      "initial_status": "open",
+      "allowed_vehicle_types": ["CCF", "light_vehicle", "command_post"],
+      "restrictions": [],
+      "note": "CCF-compatible retreat route toward Water Point 2",
+      "geometry": [
+        { "lat": 43.4560, "lon": 3.7480 },
+        { "lat": 43.4620, "lon": 3.7350 }
+      ]
+    },
+    {
+      "road_id": "forest-track-5",
+      "name": "Forest Track 5",
+      "type": "forest_track",
+      "initial_status": "open",
+      "allowed_vehicle_types": ["light_vehicle"],
+      "restrictions": [
+        { "vehicle_type": "CCF", "reason": "Track not rated for heavy vehicle weight" }
+      ],
+      "note": "Light vehicles only",
+      "geometry": [
+        { "lat": 43.4480, "lon": 3.7500 },
+        { "lat": 43.4540, "lon": 3.7590 }
+      ]
+    }
+  ]
+}

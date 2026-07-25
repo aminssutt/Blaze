@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blaze.local/contracts/schemas/audio_manifest_item.schema.json",
+  "title": "AudioManifestItem",
+  "description": "One prerecorded radio audio message of the demo scenario, with its reference transcript and expected outputs.",
+  "type": "object",
+  "properties": {
+    "audio_id": {
+      "type": "string",
+      "description": "Stable identifier of the audio message (e.g. audio_01)."
+    },
+    "scenario_timestamp": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Offset in seconds from incident start at which this message is released in the scenario."
+    },
+    "speaker_hint": {
+      "type": "string",
+      "description": "Expected speaking unit (e.g. Alpha 3)."
+    },
+    "clean_path": {
+      "type": "string",
+      "description": "Relative path to the clean WAV version."
+    },
+    "radio_path": {
+      "type": "string",
+      "description": "Relative path to the radio-degraded WAV version."
+    },
+    "reference_transcript": {
+      "type": "string",
+      "description": "Exact French reference transcript of the message."
+    },
+    "expected_event_types": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "RadioEvent event_type values expected to be extracted from this message."
+    }
+  },
+  "required": [
+    "audio_id",
+    "scenario_timestamp",
+    "speaker_hint",
+    "clean_path",
+    "radio_path",
+    "reference_transcript",
+    "expected_event_types"
+  ]
+}

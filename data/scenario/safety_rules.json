@@ -1,0 +1,45 @@
+{
+  "source_type": "seeded_demo",
+  "source_name": "scenario-safety-rules",
+  "scenario_id": "wildfire-demo-01",
+  "rules": [
+    {
+      "rule_id": "sr-retreat-route",
+      "name": "Mandatory retreat route",
+      "description": "Every engaged unit must have at least one valid, vehicle-compatible retreat route at all times.",
+      "severity": "critical"
+    },
+    {
+      "rule_id": "sr-vehicle-road-compat",
+      "name": "Vehicle/road compatibility",
+      "description": "A unit may only be routed on roads compatible with its vehicle type, taking current restrictions into account.",
+      "severity": "critical"
+    },
+    {
+      "rule_id": "sr-min-water",
+      "name": "Minimum water threshold",
+      "description": "A CCF must not remain engaged in suppression below 20% water; below 35% a refill plan is required.",
+      "severity": "critical",
+      "parameters": { "min_engagement_water_pct": 20, "refill_plan_water_pct": 35 }
+    },
+    {
+      "rule_id": "sr-visibility",
+      "name": "Visibility constraint",
+      "description": "No unit may be tasked to operate offensively in near-zero visibility; reassess mission and consider withdrawal.",
+      "severity": "high"
+    },
+    {
+      "rule_id": "sr-hazmat-perimeter",
+      "name": "Hazardous material exclusion perimeter",
+      "description": "Confirmed or suspected hazardous materials (e.g. gas cylinders) require an exclusion perimeter; no unit enters until assessment.",
+      "severity": "critical",
+      "parameters": { "default_perimeter_radius_m": 300 }
+    },
+    {
+      "rule_id": "sr-human-approval",
+      "name": "No dispatch without human approval",
+      "description": "No dispatch instruction may be sent to any unit without explicit approval of the human incident commander.",
+      "severity": "critical"
+    }
+  ]
+}

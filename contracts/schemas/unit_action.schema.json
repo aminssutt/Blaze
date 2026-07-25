@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blaze.local/contracts/schemas/unit_action.schema.json",
+  "title": "UnitAction",
+  "description": "One proposed action for a specific unit inside a draft tactical plan.",
+  "type": "object",
+  "properties": {
+    "action_id": {
+      "type": "string",
+      "description": "Unique identifier of this action."
+    },
+    "unit_id": {
+      "type": "string",
+      "description": "Target unit (e.g. alpha-3)."
+    },
+    "action_type": {
+      "type": "string",
+      "description": "Action category (e.g. retreat, reconnaissance, confirm_access, hold_position)."
+    },
+    "instruction": {
+      "type": "string",
+      "description": "Concise human-readable instruction."
+    },
+    "route": {
+      "type": ["string", "null"],
+      "description": "Route identifier to use (e.g. north-access), null if not applicable."
+    },
+    "destination": {
+      "type": ["string", "null"],
+      "description": "Destination identifier (e.g. water-point-2), null if not applicable."
+    },
+    "reason": {
+      "type": "string",
+      "description": "Why this action is proposed."
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"],
+      "description": "Action priority."
+    },
+    "evidence_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "RadioEvent or tool-call identifiers supporting this action."
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Planning confidence between 0 and 1."
+    },
+    "human_approval_required": {
+      "type": "boolean",
+      "description": "True if the action must be approved by the incident commander."
+    },
+    "acknowledgement_required": {
+      "type": "boolean",
+      "description": "True if the unit must acknowledge the instruction."
+    }
+  },
+  "required": [
+    "action_id",
+    "unit_id",
+    "action_type",
+    "instruction",
+    "reason",
+    "priority",
+    "evidence_ids",
+    "confidence",
+    "human_approval_required",
+    "acknowledgement_required"
+  ]
+}
