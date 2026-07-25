@@ -1,8 +1,8 @@
-"""Health endpoint with best-effort component sub-checks.
+"""Health endpoint with per-component reachability sub-checks.
 
-Every sub-check is wrapped so that a missing dependency or an unreachable
-service can NEVER make /health fail: degraded components are reported in
-the payload, and the endpoint always answers 200.
+Every sub-check is best-effort: a missing dependency or an unreachable
+service can never make /health fail — degraded components are reported
+in the payload and the endpoint always answers 200.
 """
 
 import importlib.util
@@ -11,58 +11,54 @@ import shutil
 import httpx
 from fastapi import APIRouter
 
-from api.config import get_settings
+from backend.api.config import get_settings
 
-router = APIRouter(tags=["health"])
+router = APIRouter()
 
-VLLM_PING_TIMEOUT_S = 2.0
+CHECK_TIMEOUT_S = 2.0
 
 
-async def check_vllm() -> dict:
-    """Ping VLLM_BASE_URL/health with a short timeout."""
-    settings = get_settings()
-    url = settings.vllm_base_url.rstrip("/") + "/health"
+async def _check_vllm(base_url: str) -> dict:
+    url = f"{base_url.rstrip('/')}/health"
     try:
-        async with httpx.AsyncClient(timeout=VLLM_PING_TIMEOUT_S) as client:
-            response = await client.get(url)
-        if response.status_code == 200:
-            return {"status": "ok", "url": url}
-        return {"status": "unreachable", "url": url, "detail": f"HTTP {response.status_code}"}
-    except Exception as exc:  # noqa: BLE001 — best-effort check, never raise
-        return {"status": "unreachable", "url": url, "detail": type(exc).__name__}
+        async with httpx.AsyncClient(timeout=CHECK_TIMEOUT_S) as client:
+            resp = await client.get(url)
+        ok = resp.status_code == 200
+        return {"status": "ok" if ok else "error", "detail": f"HTTP {resp.status_code}"}
+    except httpx.HTTPError as exc:
+        return {"status": "unreachable", "detail": type(exc).__name__}
 
 
-def check_stt() -> dict:
-    """STT is available if the faster_whisper package is importable."""
-    try:
-        installed = importlib.util.find_spec("faster_whisper") is not None
-    except Exception:  # noqa: BLE001 — best-effort check, never raise
-        installed = False
-    return {"status": "ok" if installed else "not_installed", "engine": "faster-whisper"}
+def _check_stt() -> dict:
+    if importlib.util.find_spec("faster_whisper") is not None:
+        return {"status": "ok", "detail": "faster-whisper importable"}
+    return {"status": "not_installed", "detail": "faster-whisper not in this environment"}
 
 
-def check_tts() -> dict:
-    """TTS is available if the piper binary is on PATH."""
-    try:
-        binary = shutil.which("piper")
-    except Exception:  # noqa: BLE001 — best-effort check, never raise
-        binary = None
-    return {"status": "ok" if binary else "not_installed", "engine": "piper"}
+def _check_tts(settings) -> dict:
+    if shutil.which("piper") is None:
+        return {"status": "not_installed", "detail": "piper binary not on PATH"}
+    if not settings.piper_voice_path:
+        return {"status": "not_configured", "detail": "PIPER_VOICE_PATH empty"}
+    voice = settings.resolve_path(settings.piper_voice_path)
+    if voice.is_file():
+        return {"status": "ok", "detail": str(voice.name)}
+    return {"status": "missing", "detail": f"voice model not found: {voice}"}
 
 
 @router.get("/health")
 async def health() -> dict:
-    """Global status plus per-component sub-checks. Always answers 200."""
     settings = get_settings()
-    checks = {
-        "vllm": await check_vllm(),
-        "stt": check_stt(),
-        "tts": check_tts(),
+    components = {
+        "vllm": await _check_vllm(settings.vllm_base_url),
+        "stt": _check_stt(),
+        "tts": _check_tts(settings),
     }
-    all_ok = all(check["status"] == "ok" for check in checks.values())
+    degraded = [name for name, c in components.items() if c["status"] != "ok"]
     return {
-        "status": "ok" if all_ok else "degraded",
-        "demo_mode": settings.demo_mode,
+        "status": "ok" if not degraded else "degraded",
+        "degraded_components": degraded,
+        "components": components,
         "network_mode": settings.network_mode,
-        "checks": checks,
+        "scenario_id": settings.scenario_id,
     }

@@ -1,27 +1,18 @@
-"""Application settings, loaded from the repo-root .env file.
-
-All keys mirror `.env.example` at the repository root. Nothing is hardcoded
-in the app itself: hosts, ports and URLs all come from the environment.
-"""
+"""Backend configuration — everything comes from .env, nothing hardcoded."""
 
 from functools import lru_cache
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# backend/api/config.py -> parents[2] == repository root
-_REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
-    """BLAZE backend settings (see .env.example at the repo root)."""
-
     model_config = SettingsConfigDict(
-        # Later entries win: a .env in the CWD overrides the repo-root one.
-        env_file=(_REPO_ROOT / ".env", ".env"),
+        env_file=REPO_ROOT / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
-        case_sensitive=False,
     )
 
     # Model and inference
@@ -37,28 +28,31 @@ class Settings(BaseSettings):
     scenario_id: str = "wildfire-demo-01"
     demo_mode: bool = True
     use_cached_external_data: bool = True
-    network_mode: str = "online"
+    network_mode: str = "online"  # online | offline
 
     # Speech
     whisper_model_size: str = "small"
     whisper_language: str = "fr"
-    piper_voice_path: str = "speech/tts/piper-voices/fr_FR-siwis-medium.onnx"
+    piper_voice_path: str = ""
 
-    # Backend / frontend
+    # Backend/frontend
     backend_host: str = "0.0.0.0"
     backend_port: int = 8080
     frontend_port: int = 3000
 
     @property
     def cors_origins(self) -> list[str]:
-        """Frontend origins allowed by CORS."""
         return [
             f"http://localhost:{self.frontend_port}",
             f"http://127.0.0.1:{self.frontend_port}",
         ]
 
+    def resolve_path(self, value: str) -> Path:
+        """Resolve a .env path relative to the repo root."""
+        p = Path(value)
+        return p if p.is_absolute() else REPO_ROOT / p
+
 
 @lru_cache
 def get_settings() -> Settings:
-    """Cached settings accessor (import-time safe, override-friendly in tests)."""
     return Settings()
