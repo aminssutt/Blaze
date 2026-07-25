@@ -9,13 +9,133 @@
 
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useIncidentState } from "@/lib/session";
 import { useScenario } from "@/lib/useScenario";
 import type { LatLon, ScenarioRoad } from "@/lib/scenarioData";
-import type { RadioEvent } from "@/lib/contracts";
+import type { DraftTacticalPlan, RadioEvent } from "@/lib/contracts";
 import { Chip, Panel, SourceBadge } from "@/components/ui";
 import type { PanelComponentProps } from "@/components/ui";
+
+/* -------------------------------------------------------------------------- */
+/* Cadastral buildings (ticket #40) — cached_public GeoJSON, centroids only   */
+/* -------------------------------------------------------------------------- */
+
+const CADASTRE_URL = "/data/geo/cadastre_batiments_clipped.geojson";
+/** Density texture, not architecture: cap the layer for SVG performance. */
+const MAX_BUILDINGS = 4000;
+
+function firstRing(geometry: {
+  type: string;
+  coordinates: number[][][] | number[][][][];
+}): number[][] {
+  return geometry.type === "Polygon"
+    ? (geometry.coordinates as number[][][])[0]
+    : (geometry.coordinates as number[][][][])[0][0];
+}
+
+/** Fetch the clipped cadastre once and reduce each building to its centroid. */
+function useBuildingCentroids(): LatLon[] | null {
+  const [centroids, setCentroids] = useState<LatLon[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(CADASTRE_URL)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((collection: { features: { geometry: never }[] }) => {
+        if (cancelled) return;
+        const step = Math.max(1, Math.ceil(collection.features.length / MAX_BUILDINGS));
+        const points: LatLon[] = [];
+        for (let i = 0; i < collection.features.length; i += step) {
+          const ring = firstRing(collection.features[i].geometry);
+          let lat = 0;
+          let lon = 0;
+          for (const [x, y] of ring) {
+            lon += x;
+            lat += y;
+          }
+          points.push({ lat: lat / ring.length, lon: lon / ring.length });
+        }
+        setCentroids(points);
+      })
+      .catch(() => {
+        if (!cancelled) setCentroids([]); // layer optional: map works without it
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return centroids;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Road intel from the radio (ticket #41) — per-vehicle styling               */
+/* -------------------------------------------------------------------------- */
+
+interface RoadIntel {
+  /** road_status said blocked (audio 1). */
+  blocked: boolean;
+  /** correction said: light vehicles pass, CCF stays blocked (audio 4). */
+  corrected: boolean;
+}
+
+/** What the field reported about each road, in radio order — nothing invented. */
+function buildRoadIntel(
+  radioEvents: RadioEvent[],
+  roads: ScenarioRoad[],
+): Map<string, RoadIntel> {
+  const intel = new Map<string, RoadIntel>();
+  for (const event of radioEvents) {
+    if (!event.location_reference) continue;
+    const ref = normalize(event.location_reference);
+    for (const road of roads) {
+      const keys = [normalize(road.road_id), normalize(road.name)];
+      if (!keys.some((k) => k && (ref.includes(k) || k.includes(ref)))) continue;
+      const entry = intel.get(road.road_id) ?? { blocked: false, corrected: false };
+      if (event.event_type === "road_status") entry.blocked = true;
+      if (event.event_type === "correction") entry.corrected = true;
+      intel.set(road.road_id, entry);
+    }
+  }
+  return intel;
+}
+
+/** Roads the approved/draft plan uses vs the ones it explicitly walks away from. */
+function buildPlanRoutes(
+  plan: DraftTacticalPlan | null,
+  roads: ScenarioRoad[],
+): { selected: Set<string>; rejected: Set<string> } {
+  const selected = new Set<string>();
+  const rejected = new Set<string>();
+  if (!plan) return { selected, rejected };
+  const mentioned = (text: string, road: ScenarioRoad) => {
+    const t = normalize(text);
+    return t.includes(normalize(road.road_id)) || t.includes(normalize(road.name));
+  };
+  for (const action of plan.unit_actions) {
+    if (action.route) selected.add(action.route);
+  }
+  // A road is "rejected" when the plan text forbids it (for a vehicle type),
+  // even if another unit still uses it: D17 is retenue for Charlie 1 (VL)
+  // and ecartee for the CCF retreat at the same time.
+  const FORBID = /(forbidden|interdit|interdite|ecarte|rejected|avoid)/;
+  const texts = [
+    ...plan.unit_actions.map((a) => a.instruction ?? ""),
+    ...(plan.rejected_options ?? []).map((o) =>
+      typeof o === "string" ? o : `${o.option ?? ""} ${o.reason ?? ""}`,
+    ),
+  ];
+  // Evaluate clause by clause: "Retreat via North Access. D17 forbidden for
+  // CCF" forbids D17, not North Access.
+  const clauses = texts.flatMap((t) => (t ? t.split(/[.;:]/) : []));
+  for (const road of roads) {
+    for (const clause of clauses) {
+      if (!mentioned(clause, road)) continue;
+      if (FORBID.test(clause.toLowerCase())) rejected.add(road.road_id);
+      else if (!selected.has(road.road_id)) rejected.add(road.road_id);
+    }
+  }
+  return { selected, rejected };
+}
 
 /* -------------------------------------------------------------------------- */
 /* Projection                                                                 */
@@ -153,8 +273,9 @@ function roadStroke(status: string | undefined): { stroke: string; dash?: string
 /* -------------------------------------------------------------------------- */
 
 export default function TacticalMap({ className }: PanelComponentProps) {
-  const { snapshot, radioEvents, incidentLocation } = useIncidentState();
+  const { snapshot, radioEvents, incidentLocation, plan } = useIncidentState();
   const { units, roads, resources } = useScenario();
+  const buildings = useBuildingCentroids();
 
   const model = useMemo(() => {
     if (!roads || !units || !resources) return null;
@@ -183,8 +304,34 @@ export default function TacticalMap({ className }: PanelComponentProps) {
     }
 
     const tracks = buildTracks(units.units, radioEvents, roads.roads, namedPoints);
-    return { projector, liveStatus, tracks };
-  }, [roads, units, resources, snapshot, radioEvents]);
+    const unitState = new Map<string, { water: number | null; mission: string | null }>();
+    for (const u of snapshot?.units ?? []) {
+      const id = typeof u.unit_id === "string" ? u.unit_id : null;
+      if (!id) continue;
+      unitState.set(id, {
+        water: typeof u.water_pct === "number" ? u.water_pct : null,
+        mission: typeof u.mission === "string" ? u.mission : null,
+      });
+    }
+    const roadIntel = buildRoadIntel(radioEvents, roads.roads);
+    const planRoutes = buildPlanRoutes(plan, roads.roads);
+
+    // Exclusion perimeter (#41): a radio `confirmation` at the hangar
+    // (explosions / gas cylinders, audio 5) rings the industrial zone.
+    const hangar = resources.resources.find((r) => r.type === "industrial_building");
+    const exclusionCenter =
+      hangar?.position &&
+      radioEvents.some((e) => {
+        if (e.event_type !== "confirmation" || !e.location_reference) return false;
+        const ref = normalize(e.location_reference);
+        const name = normalize(hangar.name);
+        return ref.includes(name) || name.includes(ref);
+      })
+        ? hangar.position
+        : null;
+
+    return { projector, liveStatus, tracks, unitState, roadIntel, planRoutes, exclusionCenter };
+  }, [roads, units, resources, snapshot, radioEvents, plan]);
 
   const reportedHops = model
     ? model.tracks.reduce((n, t) => n + t.path.length - 1, 0)
@@ -205,6 +352,13 @@ export default function TacticalMap({ className }: PanelComponentProps) {
           {reportedHops > 0 && (
             <Chip label="radio moves" value={reportedHops} tone="accent" />
           )}
+          {buildings && buildings.length > 0 && (
+            <Chip
+              label="bâtiments"
+              value={buildings.length}
+              title="Cadastre Etalab clippé (cached_public), échantillonné pour le rendu"
+            />
+          )}
           <SourceBadge source="seeded_demo" sourceName="scenario geometry" />
         </>
       }
@@ -223,9 +377,62 @@ export default function TacticalMap({ className }: PanelComponentProps) {
             className="w-full rounded-xl"
             style={{ background: "var(--blaze-bg)" }}
           >
-            {/* Roads */}
+            {/* Cadastral buildings (#40) — cached_public density layer */}
+            {buildings && buildings.length > 0 && (
+              <path
+                aria-hidden
+                d={buildings
+                  .map(
+                    (b) =>
+                      `M${(model.projector.x(b) - 0.22).toFixed(2)},${(model.projector.y(b) - 0.22).toFixed(2)}h0.44v0.44h-0.44z`,
+                  )
+                  .join("")}
+                fill="var(--blaze-border)"
+                opacity="0.55"
+              />
+            )}
+
+            {/* Exclusion perimeter (#41) — rung by the audio 5 confirmation */}
+            {model.exclusionCenter && (
+              <g aria-label="Périmètre d'exclusion autour du hangar">
+                <circle
+                  cx={model.projector.x(model.exclusionCenter)}
+                  cy={model.projector.y(model.exclusionCenter)}
+                  r="7"
+                  fill="var(--blaze-alert)"
+                  opacity="0.06"
+                />
+                <circle
+                  cx={model.projector.x(model.exclusionCenter)}
+                  cy={model.projector.y(model.exclusionCenter)}
+                  r="7"
+                  fill="none"
+                  stroke="var(--blaze-alert)"
+                  strokeWidth="0.4"
+                  strokeDasharray="1.4 1"
+                >
+                  <animate attributeName="opacity" values="0.9;0.4;0.9" dur="2.4s" repeatCount="indefinite" />
+                </circle>
+                <text
+                  x={model.projector.x(model.exclusionCenter)}
+                  y={model.projector.y(model.exclusionCenter) - 7.8}
+                  fontSize="2"
+                  fill="var(--blaze-alert)"
+                  fontFamily="monospace"
+                  textAnchor="middle"
+                >
+                  périmètre d&apos;exclusion
+                </text>
+              </g>
+            )}
+
+            {/* Roads — status by vehicle type + plan selection (#41) */}
             {roads.roads.map((road) => {
-              const style = roadStroke(model.liveStatus.get(road.road_id) ?? road.initial_status);
+              const status = model.liveStatus.get(road.road_id) ?? road.initial_status;
+              const intel = model.roadIntel.get(road.road_id);
+              const selected = model.planRoutes.selected.has(road.road_id);
+              const rejected = model.planRoutes.rejected.has(road.road_id);
+              const style = roadStroke(status);
               const d = road.geometry
                 .map(
                   (p, i) =>
@@ -235,14 +442,70 @@ export default function TacticalMap({ className }: PanelComponentProps) {
               const mid = roadMidpoint(road);
               return (
                 <g key={road.road_id}>
-                  <path
-                    d={d}
-                    fill="none"
-                    stroke={style.stroke}
-                    strokeWidth="0.7"
-                    strokeDasharray={style.dash}
-                    strokeLinecap="round"
-                  />
+                  {selected && (
+                    <path
+                      d={d}
+                      fill="none"
+                      stroke="var(--blaze-ok)"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      opacity="0.35"
+                    />
+                  )}
+                  {intel?.corrected ? (
+                    // Audio 4 correction: CCF still blocked (red core),
+                    // light vehicles pass (amber dashes on top).
+                    <>
+                      <path
+                        d={d}
+                        fill="none"
+                        stroke="var(--blaze-alert)"
+                        strokeWidth="0.9"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d={d}
+                        fill="none"
+                        stroke="var(--blaze-warn)"
+                        strokeWidth="0.45"
+                        strokeDasharray="1.6 1.2"
+                        strokeLinecap="round"
+                      />
+                    </>
+                  ) : intel?.blocked ? (
+                    <path
+                      d={d}
+                      fill="none"
+                      stroke="var(--blaze-alert)"
+                      strokeWidth="0.8"
+                      strokeDasharray="1.6 1.2"
+                      strokeLinecap="round"
+                    />
+                  ) : (
+                    <path
+                      d={d}
+                      fill="none"
+                      stroke={style.stroke}
+                      strokeWidth="0.7"
+                      strokeDasharray={style.dash}
+                      strokeLinecap="round"
+                    />
+                  )}
+                  {mid && (selected || rejected) && (
+                    <text
+                      x={model.projector.x(mid) + 1}
+                      y={model.projector.y(mid) + 2.6}
+                      fontSize="2"
+                      fill={selected ? "var(--blaze-ok)" : "var(--blaze-alert)"}
+                      fontFamily="monospace"
+                    >
+                      {selected && rejected
+                        ? "✓ retenu VL · ✕ écarté CCF"
+                        : selected
+                          ? "✓ itinéraire retenu"
+                          : "✕ écartée par le plan"}
+                    </text>
+                  )}
                   {mid && (
                     <text
                       x={model.projector.x(mid) + 1}
@@ -346,6 +609,25 @@ export default function TacticalMap({ className }: PanelComponentProps) {
                   >
                     {track.callsign}
                   </text>
+                  {(() => {
+                    const live = model.unitState.get(track.unitId);
+                    if (!live || (live.water === null && !live.mission)) return null;
+                    const parts = [
+                      live.water !== null ? `eau ${live.water}%` : null,
+                      live.mission,
+                    ].filter(Boolean);
+                    return (
+                      <text
+                        x={cx + 2}
+                        y={cy + 1.2}
+                        fontSize="1.8"
+                        fill={live.water !== null && live.water <= 30 ? "var(--blaze-warn)" : "var(--blaze-text-muted)"}
+                        fontFamily="monospace"
+                      >
+                        {parts.join(" · ")}
+                      </text>
+                    );
+                  })()}
                 </g>
               );
             })}
@@ -375,7 +657,21 @@ export default function TacticalMap({ className }: PanelComponentProps) {
                 className="inline-block size-2 rounded-sm border"
                 style={{ borderColor: "var(--blaze-alert)" }}
               />
-              hazard zone
+              hazard / exclusion
+            </span>
+            <span className="flex items-center gap-1">
+              <span
+                className="inline-block h-0.5 w-3"
+                style={{
+                  background:
+                    "repeating-linear-gradient(90deg, var(--blaze-alert) 0 3px, var(--blaze-warn) 3px 6px)",
+                }}
+              />
+              D17 : rouge CCF · ambre VL (correction radio)
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-0.5 w-3" style={{ background: "var(--blaze-ok)" }} />
+              itinéraire retenu · ✕ écarté par le plan
             </span>
             <span>dashed trail = moves reported over the radio</span>
           </div>
