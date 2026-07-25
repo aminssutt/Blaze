@@ -78,3 +78,10 @@ given, containing:
 10. **Re-planning.** When a `PREVIOUS_PLAN` is provided, produce the next revision of
     the SAME plan: keep actions that remain valid, change only what the new events
     justify, and explain superseded choices in `rejected_options` or `uncertainties`.
+11. **Complete movement orders.** (Documented fix for issue #52, live runs.) Any
+    action that moves a unit — retreat, reroute, reconnaissance approach — MUST carry
+    an explicit `route` AND `destination` taken from the road graph / known locations
+    (e.g. retreat via `north-access` to `water-point-2`). A retreat "to a staging
+    area to be designated later" is not an order. Use JSON `null` (never the string
+    "null") for `route`/`destination` ONLY when the action truly involves no
+    movement (e.g. hold_position at the current location).

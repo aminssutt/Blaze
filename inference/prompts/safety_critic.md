@@ -88,8 +88,32 @@ its severity:
 4. Is the risk purely "the data might be wrong / staleness / not quantified"? -> that
    is the mechanical checks' and the commander's territory: `required_confirmations`.
 
-If every mechanical check passes and the plan's posture is defensive
-(retreat / stand-off / suspension / confirmation), the expected output is
-`recommended_status: "pass"` with your remaining concerns as
-`required_confirmations`. `pass` only means "ready for human review with these
-confirmations", never "safe" or "approved" — the human commander decides.
+Hard grading rules:
+
+- `material` requires you to QUOTE the plan and show the mitigation is ABSENT. If the
+  plan contains ANY mitigation for the risk — even partial (abort criteria, stand-off,
+  suspension, an explicit retreat route, a confirmation tasking) — the severity MUST
+  be `minor` or a `required_confirmation`.
+- Hypothetical compound scenarios you construct yourself (possible convergence,
+  timing conflicts, "single point of failure", "the data might be wrong") are `minor`
+  or `required_confirmations` UNLESS the plan text itself creates the conflict with no
+  mitigation.
+- DEFAULT VERDICT: when every mechanical check passes and the plan's posture is
+  defensive (retreat / stand-off / suspension / confirmation), output
+  `recommended_status: "pass"` with your remaining concerns as
+  `required_confirmations`. Deviating from this default requires at least one
+  objection that passed test 1 above. `pass` only means "ready for human review with
+  these confirmations", never "safe" or "approved" — the human commander decides.
+
+Worked examples (grade like this):
+
+- Plan orders "Alpha 3: retreat via north-access to water-point-2" and you worry
+  north-access could later be cut by the fire front -> `minor` +
+  required_confirmation "confirm north-access remains clear during withdrawal".
+  NOT material: the retreat with explicit route IS the mitigation.
+- Plan tasks "Bravo 2: stand-off reconnaissance of the hangar, do not approach,
+  abort on new explosion" and you worry the stand-off distance is not quantified ->
+  required_confirmation "PC to fix a minimum stand-off distance". NOT material.
+- Plan tasks Bravo 2 to enter the hangar zone to identify the explosion source, with
+  explosions reported and no perimeter, no abort criteria -> `material` (test 1:
+  unit sent INTO an unassessed hazard).
