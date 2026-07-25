@@ -281,7 +281,7 @@ Full script with narration in [`DEMO_SCRIPT.md`](./DEMO_SCRIPT.md). Step-by-step
 4. **Audio 2 (Alpha 3)** → water 30%, visibility near zero → unit risk raised.
 5. **Context correlation** → Situation Context Agent snapshot: wind/humidity, terrain, cadastral hangar, roads, water point, FIRMS hotspot (if cached), unit states — all provenance-labeled.
 6. **Audio 3 (Bravo 2)** → field-reported wind shift toward south-east; D17 risk raised.
-7. **Audio 4 (Charlie 1)** → **correction**: D17 open to light vehicles, closed to CCF; previous event corrected, not deleted; map restyles by vehicle type.
+7. **Audio 4 (Alpha 3)** → **correction**: D17 open to light vehicles, closed to CCF; previous event corrected, not deleted; map restyles by vehicle type.
 8. **Draft plan** → Tactical Planning Agent proposes; **Safety Critic identifies a real risk** (e.g. Alpha 3 water/visibility) → revision.
 9. **Audio 5 (Bravo 2)** → explosions confirmed, possible gas cylinders → exclusion zone; final plan version.
 10. **Approval** — commander reviews actions, evidence, uncertainties, safety review → clicks **Approve**.
