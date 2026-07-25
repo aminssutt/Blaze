@@ -68,7 +68,7 @@ export default function RadioEventCards({ className }: PanelComponentProps) {
       }
       empty={radioEvents.length === 0}
       emptyLabel="aucun événement extrait…"
-      emptyHint="alimenté par radio_event.extracted"
+      emptyHint="faits structurés tirés de chaque message radio — après transcription"
     >
       <ul className="flex flex-col gap-1.5">
         {radioEvents.map((event) => {

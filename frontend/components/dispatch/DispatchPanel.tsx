@@ -69,7 +69,7 @@ export default function DispatchPanel({ className }: PanelComponentProps) {
         }
         empty
         emptyLabel="diffusion verrouillée"
-        emptyHint="en attente de la validation du commandant"
+        emptyHint="messages vocaux par unité — déverrouillés après validation du commandant"
       />
     );
   }
@@ -95,7 +95,7 @@ export default function DispatchPanel({ className }: PanelComponentProps) {
       }
       empty={dispatches.length === 0}
       emptyLabel="aucun message généré…"
-      emptyHint="alimenté par dispatch.instruction.ready"
+      emptyHint="messages vocaux par unité — en cours de génération après validation"
     >
       <ul className="flex flex-col gap-1.5">
         {dispatches.map((dispatch) => {

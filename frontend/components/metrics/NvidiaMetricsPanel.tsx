@@ -103,7 +103,7 @@ export default function NvidiaMetricsPanel({ className }: PanelComponentProps) {
       }
       empty={metrics === null}
       emptyLabel="aucune métrique…"
-      emptyHint="alimenté par metric.updated"
+      emptyHint="latences et charge GPU de l'inférence — dès la première mesure"
     >
       <div className="flex flex-col gap-2 font-mono">
         {/* hero — the local-GPU proof, big and green when measured at 0 */}

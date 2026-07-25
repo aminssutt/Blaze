@@ -30,7 +30,7 @@ export default function SituationSnapshotPanel({ className }: PanelComponentProp
       }
       empty={!snapshot}
       emptyLabel="aucune synthèse…"
-      emptyHint="alimenté par situation.snapshot.ready"
+      emptyHint="résumé de situation rédigé par le système — après analyse des messages"
     >
       {snapshot && (
         <div className="flex flex-col gap-2 text-[11px] leading-snug">

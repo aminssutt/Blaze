@@ -34,7 +34,7 @@ export default function TacticalMap({ className }: PanelComponentProps) {
       live={ready}
       empty={!ready}
       emptyLabel="carte en attente…"
-      emptyHint="cadrage fourni par incident.started"
+      emptyHint="géométrie du scénario + unités — en attente du snapshot initial"
     >
       <div className="flex flex-col gap-2">
         {boundingBox && (
