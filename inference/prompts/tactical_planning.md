@@ -114,3 +114,26 @@ given, containing:
       `retreat_route: "<road_id>"` field inside the action object). For a unit that
       is simply waiting at a safe location, use `standby` or `monitor` instead —
       never `hold_position`.
+14. **HARD RULE — explicit retreat option on EVERY tasked unit.** (Structural fix
+    for issue #52 after repeated live rejections.) The Safety Critic's rule engine
+    reads unit actions MECHANICALLY: prose does not count. EVERY unit action,
+    whatever its type (`suppression`, `reconnaissance`, `confirm_access`,
+    `standby`, `hold_position`, ...), MUST include a machine-readable retreat
+    option: a `"retreat_route": "<road_id>"` field inside the action object, using
+    an open road compatible with the unit's vehicle type. If you cannot emit that
+    extra field, express the retreat as a SECOND action of type `retreat` for the
+    same unit, listed AFTER its main action. A plan where an engaged unit has no
+    machine-readable retreat option is AUTOMATICALLY rejected by the Safety Critic
+    — no exception.
+
+    Few-shot — `confirm_access` action WITH its retreat option:
+
+    ```json
+    {"unit_id": "charlie-1", "action_type": "confirm_access",
+     "instruction": "Charlie 1, confirmez l'état de la D17 depuis l'intersection nord sans vous engager au-delà ; en cas de danger, repli immédiat par North Access vers le point d'eau 2.",
+     "route": "d17", "destination": "d17", "retreat_route": "north-access",
+     "reason": "Radio reports D17 blocked for CCF; visual confirmation from a safe standoff resolves the conflict with the road graph.",
+     "priority": "high", "evidence_ids": ["<a real RadioEvent id>"],
+     "confidence": 0.8, "human_approval_required": true,
+     "acknowledgement_required": true}
+    ```
