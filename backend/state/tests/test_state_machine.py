@@ -619,3 +619,55 @@ def test_failed_trigger_emits_nothing():
     assert received == []
     assert m.emitted_events == ()
     assert m.audit_trail == ()
+
+
+# --------------------------------------------------------------------- #
+# Escalation-to-human policy (issue #52)
+# --------------------------------------------------------------------- #
+
+
+def _machine_at_safety_review() -> IncidentStateMachine:
+    m = IncidentStateMachine("incident-esc")
+    m.start_incident()
+    m.receive_audio()
+    m.start_transcription()
+    m.start_context_collection()
+    m.record_tool_call()
+    m.record_tool_result()
+    m.transcript_ready()
+    m.record_radio_event()
+    m.complete_context_collection()
+    m.complete_radio_extraction()
+    m.submit_situation_snapshot()
+    m.submit_draft_plan({"plan_id": "plan-esc"})
+    assert m.state is IncidentState.SAFETY_REVIEW
+    return m
+
+
+def test_revise_escalated_after_bounded_revisions_reaches_human_gate():
+    m = _machine_at_safety_review()
+    review = {"critical_objections": ["[llm-critique/material] residual objection"]}
+    envelopes = m.complete_safety_review(
+        SafetyReviewStatus.REVISE, review, escalate_to_human=True
+    )
+    assert m.state is IncidentState.AWAITING_HUMAN_APPROVAL
+    approval_req = [e for e in envelopes if e.event_type is EventType.APPROVAL_REQUESTED]
+    assert len(approval_req) == 1
+    payload = approval_req[0].payload
+    assert payload["escalated_after_revisions"] is True
+    assert payload["residual_objections"] == review["critical_objections"]
+    assert m.audit_trail[-1].details["escalated_to_human"] is True
+
+
+def test_block_is_never_escalated_even_with_the_flag():
+    m = _machine_at_safety_review()
+    m.complete_safety_review(
+        SafetyReviewStatus.BLOCK, {"critical_objections": ["x"]}, escalate_to_human=True
+    )
+    assert m.state is IncidentState.REVISING_PLAN
+
+
+def test_revise_without_escalation_flag_still_routes_to_revising():
+    m = _machine_at_safety_review()
+    m.complete_safety_review(SafetyReviewStatus.REVISE, escalate_to_human=False)
+    assert m.state is IncidentState.REVISING_PLAN

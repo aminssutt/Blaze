@@ -570,9 +570,21 @@ class IncidentStateMachine:
         self,
         status: SafetyReviewStatus,
         payload: Optional[Dict[str, Any]] = None,
+        *,
+        escalate_to_human: bool = False,
     ) -> List[EventEnvelope]:
-        """SAFETY_REVIEW -> AWAITING_HUMAN_APPROVAL (pass) | REVISING_PLAN
-        (revise / block)."""
+        """SAFETY_REVIEW -> AWAITING_HUMAN_APPROVAL (pass, or revise escalated) |
+        REVISING_PLAN (revise / block).
+
+        Escalation policy (issue #52): the Safety Critic never replaces the
+        human commander. An adversarial LLM critique can produce objections on
+        every iteration; after the orchestrator's BOUNDED revision loop, a
+        review still at ``revise`` may be escalated to the human commander
+        (``escalate_to_human=True``) with its residual objections attached to
+        the approval request — the human decides in full knowledge. A ``block``
+        (mechanical rule failure) is NEVER escalated: the flag is ignored and
+        the plan goes back to revision.
+        """
         self._guard("complete_safety_review", {IncidentState.SAFETY_REVIEW})
         status = SafetyReviewStatus(status)
         review = self._payload(payload)
@@ -587,6 +599,25 @@ class IncidentStateMachine:
                     (EventType.APPROVAL_REQUESTED, {"plan_version": self.plan_version}),
                 ],
                 details={"safety_status": status.value},
+            )
+        if status is SafetyReviewStatus.REVISE and escalate_to_human:
+            return self._commit(
+                "complete_safety_review",
+                IncidentState.AWAITING_HUMAN_APPROVAL,
+                [
+                    (EventType.SAFETY_REVIEW_READY, review),
+                    (
+                        EventType.APPROVAL_REQUESTED,
+                        {
+                            "plan_version": self.plan_version,
+                            "escalated_after_revisions": True,
+                            "residual_objections": list(
+                                review.get("critical_objections") or []
+                            ),
+                        },
+                    ),
+                ],
+                details={"safety_status": status.value, "escalated_to_human": True},
             )
         return self._commit(
             "complete_safety_review",
