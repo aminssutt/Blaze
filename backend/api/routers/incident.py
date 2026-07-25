@@ -1,5 +1,7 @@
 """Incident endpoints — demo controller API (start/reset/status + toggles)."""
 
+import asyncio
+import contextlib
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Request
@@ -39,6 +41,16 @@ async def start_incident(request: Request, body: StartRequest | None = None):
 @router.post("/reset")
 async def reset_incident(request: Request):
     demo = get_demo(request)
+    # Dev publishers (replay, audio ingest) must die BEFORE the bus resets,
+    # or they keep pushing pre-reset events into the clean run.
+    state = request.app.state
+    for attr in ("replay_task", "audio_ingest_task"):
+        task: asyncio.Task | None = getattr(state, attr, None)
+        if task is not None and not task.done():
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+        setattr(state, attr, None)
     await demo.reset()
     request.app.state.plans.reset()  # plans + decisions wiped with the run
     return demo.status()
