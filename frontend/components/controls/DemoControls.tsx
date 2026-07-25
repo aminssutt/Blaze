@@ -109,7 +109,7 @@ export default function DemoControls() {
         }`}
         title="Coupure réseau simulée — bascule network.mode.changed (API réelle au ticket #54)"
       >
-        {offline ? "⚡ network down" : "⚡ cut the network"}
+        {offline ? "network down" : "cut the network"}
       </button>
 
       <button

@@ -142,7 +142,7 @@ export default function MonitorPage() {
         >
           <div className="flex min-w-0 shrink-0 items-baseline gap-1.5 rounded-sm border border-edge bg-surface px-2 py-1">
             <span className="whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
-              🎯 Commander station
+              Commander station
             </span>
             <span className="min-w-0 truncate font-mono text-[10px] text-faint">
               — approval, then dispatch

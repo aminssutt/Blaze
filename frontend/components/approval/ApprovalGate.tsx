@@ -8,10 +8,18 @@
 // (the resulting approval.received / plan.draft.ready events flow back through
 // the SSE stream); the rendering below is already API-shaped
 // (ApprovalDecision contract). Mock behaviour is byte-for-byte untouched.
+//
+// THE DEMO MOMENT (product/pro-polish-gate): the decision buttons are NOT a
+// permanent fixture. Before approval.requested the panel shows its waiting
+// state without any button; the instant the event lands, the whole decision
+// block SURGES in (scale+fade spring) while the surrounding aside pulses
+// amber — the jury must SEE the AI hand over to the human. After the decision
+// the buttons leave and the existing recap takes their place.
 
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   useIncidentState,
   usePlayerState,
@@ -42,6 +50,7 @@ export default function ApprovalGate({ className }: PanelComponentProps) {
     useIncidentState();
   const player = usePlayerState();
   const controls = useSessionControls();
+  const reduce = useReducedMotion();
   const [note, setNote] = useState("");
   /** Note typed in THIS session, frozen at decision time for the audit trail. */
   const [sessionNote, setSessionNote] = useState<string | null>(null);
@@ -99,85 +108,99 @@ export default function ApprovalGate({ className }: PanelComponentProps) {
       tone={approvalRequested ? "accent" : dispatchUnlocked ? "ok" : "default"}
       empty={!approvalRequested && !approval}
       emptyLabel="no approval requested yet…"
-      emptyHint="review and send the plan — as soon as the safety review passes"
+      emptyHint="the decision buttons appear the moment the AI hands over"
     >
       <div className="flex flex-col gap-2">
-        {decisionPending && (
-          <>
-            <div className="flex items-center gap-2 rounded-sm border border-accent-dim bg-accent-dim/20 p-2">
-              <StatusDot tone="warn" pulse />
-              <span className="text-[11px] text-accent">
-                décision du commandant attendue
-              </span>
-            </div>
+        {/* The decision block only EXISTS while the decision is pending: it
+            surges in when approval.requested lands (the hand-over moment) and
+            leaves once the decision is taken, replaced by the recap below. */}
+        <AnimatePresence initial={false}>
+          {decisionPending && (
+            <motion.div
+              key="decision-block"
+              data-testid="approval-decision-block"
+              className="flex flex-col gap-2"
+              initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.82, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: -4 }}
+              transition={{ type: "spring", stiffness: 420, damping: 26, mass: 0.9 }}
+            >
+              <div className="flex items-center gap-2 rounded-sm border border-accent-dim bg-accent-dim/20 p-2">
+                <StatusDot tone="warn" pulse />
+                <span className="text-[11px] text-accent">
+                  décision du commandant attendue
+                </span>
+              </div>
 
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={2}
-              placeholder="note opérateur (jointe à la décision)…"
-              aria-label="Note opérateur"
-              className="w-full resize-none rounded-sm border border-edge bg-overlay p-2 text-[11px] leading-snug text-foreground placeholder:text-faint focus:border-accent focus:outline-none"
-            />
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={2}
+                placeholder="note opérateur (jointe à la décision)…"
+                aria-label="Note opérateur"
+                className="w-full resize-none rounded-sm border border-edge bg-overlay p-2 text-[11px] leading-snug text-foreground placeholder:text-faint focus:border-accent focus:outline-none"
+              />
 
-            <div className="flex gap-1.5" role="group" aria-label="Décision">
-              <button
-                type="button"
-                onClick={() => decide("dispatch", "approve")}
-                disabled={cannotDecide("dispatch")}
-                className="flex-1 rounded-sm border border-ok/60 bg-ok/10 px-2 py-1.5 font-mono text-[11px] font-semibold text-ok hover:border-ok disabled:cursor-not-allowed disabled:opacity-40"
-                title={
-                  live
-                    ? "Valide le plan via POST /approval/decision (backend réel)"
-                    : "Valide le plan et déclenche la phase de diffusion du replay"
-                }
-              >
-                ✓ Approuver
-              </button>
-              <button
-                type="button"
-                onClick={() => decide("plan-v2", "modify")}
-                disabled={cannotDecide("plan-v2")}
-                className="flex-1 rounded-sm border border-warn/60 bg-warn/10 px-2 py-1.5 font-mono text-[11px] font-semibold text-warn hover:border-warn disabled:cursor-not-allowed disabled:opacity-40"
-                title={
-                  live
-                    ? "Demande une révision via POST /approval/decision — le backend émet la version suivante du plan"
-                    : "Demande une révision : rejoue le scénario jusqu'à la version suivante du plan"
-                }
-              >
-                ✎ Modifier
-              </button>
-              <button
-                type="button"
-                onClick={() => decide("", "reject")}
-                disabled={!live || !plan || posting}
-                className={
-                  live
-                    ? "flex-1 rounded-sm border border-alert/60 bg-alert-dim/20 px-2 py-1.5 font-mono text-[11px] font-semibold text-alert hover:border-alert disabled:cursor-not-allowed disabled:opacity-40"
-                    : "flex-1 cursor-not-allowed rounded-sm border border-edge px-2 py-1.5 font-mono text-[11px] font-semibold text-muted opacity-40"
-                }
-                title={
-                  live
-                    ? "Rejette le plan via POST /approval/decision (backend réel)"
-                    : "Pas de branche « rejet » dans le replay mock — activé en mode live (ticket #54)"
-                }
-              >
-                ✕ Rejeter
-              </button>
-            </div>
+              {/* Approve + Modify are the primary acts; Reject stays discreet. */}
+              <div className="flex items-stretch gap-1.5" role="group" aria-label="Décision">
+                <button
+                  type="button"
+                  onClick={() => decide("dispatch", "approve")}
+                  disabled={cannotDecide("dispatch")}
+                  className="flex-[3] rounded-sm border border-ok bg-ok/15 px-2 py-2 font-mono text-[12px] font-bold text-ok hover:bg-ok/25 disabled:cursor-not-allowed disabled:opacity-40"
+                  title={
+                    live
+                      ? "Valide le plan via POST /approval/decision (backend réel)"
+                      : "Valide le plan et déclenche la phase de diffusion du replay"
+                  }
+                >
+                  ✓ Approuver
+                </button>
+                <button
+                  type="button"
+                  onClick={() => decide("plan-v2", "modify")}
+                  disabled={cannotDecide("plan-v2")}
+                  className="flex-[3] rounded-sm border border-warn bg-warn/15 px-2 py-2 font-mono text-[12px] font-bold text-warn hover:bg-warn/25 disabled:cursor-not-allowed disabled:opacity-40"
+                  title={
+                    live
+                      ? "Demande une révision via POST /approval/decision — le backend émet la version suivante du plan"
+                      : "Demande une révision : rejoue le scénario jusqu'à la version suivante du plan"
+                  }
+                >
+                  ✎ Modifier
+                </button>
+                <button
+                  type="button"
+                  onClick={() => decide("", "reject")}
+                  disabled={!live || !plan || posting}
+                  className={
+                    live
+                      ? "flex-1 rounded-sm border border-edge px-2 py-2 font-mono text-[11px] text-muted hover:border-alert/60 hover:text-alert disabled:cursor-not-allowed disabled:opacity-40"
+                      : "flex-1 cursor-not-allowed rounded-sm border border-edge px-2 py-2 font-mono text-[11px] text-muted opacity-40"
+                  }
+                  title={
+                    live
+                      ? "Rejette le plan via POST /approval/decision (backend réel)"
+                      : "Pas de branche « rejet » dans le replay mock — activé en mode live (ticket #54)"
+                  }
+                >
+                  ✕ Rejeter
+                </button>
+              </div>
 
-            {live && (posting || apiError) && (
-              <p
-                data-testid="approval-api-status"
-                className={`font-mono text-[10px] ${apiError ? "text-alert" : "text-faint"}`}
-              >
-                {apiError
-                  ? `échec de la décision : ${apiError}`
-                  : "envoi de la décision au backend…"}
-              </p>
-            )}
-          </>
-        )}
+              {live && (posting || apiError) && (
+                <p
+                  data-testid="approval-api-status"
+                  className={`font-mono text-[10px] ${apiError ? "text-alert" : "text-faint"}`}
+                >
+                  {apiError
+                    ? `échec de la décision : ${apiError}`
+                    : "envoi de la décision au backend…"}
+                </p>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {approval && (
           <div className="rounded-sm border border-edge bg-overlay p-2">

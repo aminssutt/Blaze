@@ -60,7 +60,8 @@ export type MonitorNodeId = PipelineNodeId | `tool:${string}`;
 
 export interface MonitorNodeInfo {
   id: MonitorNodeId;
-  emoji: string;
+  /** Two-letter monogram rendered as the node badge (professional, no emoji). */
+  mono: string;
   label: string;
   kind: "service" | "agent" | "human" | "tool";
   /** One-line French role, shown in the overlay header + terminal comment. */
@@ -70,63 +71,63 @@ export interface MonitorNodeInfo {
 export const NODE_INFO: Record<PipelineNodeId, MonitorNodeInfo> = {
   ingestion: {
     id: "ingestion",
-    emoji: "📻",
+    mono: "RA",
     label: "Ingestion",
     kind: "service",
     role: "field radio traffic intake (scenario audio messages)",
   },
   stt: {
     id: "stt",
-    emoji: "📝",
+    mono: "ST",
     label: "STT",
     kind: "service",
     role: "local faster-whisper transcription — no cloud",
   },
   radio_intelligence: {
     id: "radio_intelligence",
-    emoji: "🤖",
+    mono: "RI",
     label: "Radio Intelligence",
     kind: "agent",
     role: "structured fact extraction from every transcript",
   },
   situation_context: {
     id: "situation_context",
-    emoji: "🌍",
+    mono: "SC",
     label: "Situation Context",
     kind: "agent",
     role: "situation synthesis via 7 allowlisted tools, provenance-tracked",
   },
   tactical_planning: {
     id: "tactical_planning",
-    emoji: "🗺️",
+    mono: "TP",
     label: "Tactical Planning",
     kind: "agent",
     role: "facts + context fused into a versioned tactical plan",
   },
   safety_critic: {
     id: "safety_critic",
-    emoji: "🛡️",
+    mono: "SG",
     label: "Safety Critic",
     kind: "agent",
     role: "adversarial plan review — objections and safety rules",
   },
   human_gate: {
     id: "human_gate",
-    emoji: "👤",
+    mono: "HG",
     label: "Human Gate",
     kind: "human",
     role: "commander approval — nothing goes out without a human decision",
   },
   dispatch: {
     id: "dispatch",
-    emoji: "📢",
+    mono: "DP",
     label: "Dispatch",
     kind: "agent",
     role: "per-unit messages generated after approval",
   },
   tts: {
     id: "tts",
-    emoji: "🔊",
+    mono: "TT",
     label: "TTS",
     kind: "service",
     role: "local text-to-speech for the dispatch messages",
@@ -134,14 +135,14 @@ export const NODE_INFO: Record<PipelineNodeId, MonitorNodeInfo> = {
 };
 
 /** The 7 allowlisted tools of the Situation Context agent (contracts). */
-export const TOOL_NODES: { name: string; emoji: string }[] = [
-  { name: "weather", emoji: "🌤️" },
-  { name: "elevation", emoji: "⛰️" },
-  { name: "firms", emoji: "🛰️" },
-  { name: "cadastre", emoji: "🏘️" },
-  { name: "osm", emoji: "🧭" },
-  { name: "routing", emoji: "🛣️" },
-  { name: "resources", emoji: "🚒" },
+export const TOOL_NODES: { name: string; mono: string }[] = [
+  { name: "weather", mono: "WX" },
+  { name: "elevation", mono: "EL" },
+  { name: "firms", mono: "FS" },
+  { name: "cadastre", mono: "CA" },
+  { name: "osm", mono: "OS" },
+  { name: "routing", mono: "RT" },
+  { name: "resources", mono: "RS" },
 ];
 
 export function toolNodeId(toolName: string): MonitorNodeId {
@@ -155,7 +156,7 @@ export function nodeInfo(id: MonitorNodeId): MonitorNodeInfo {
     const known = TOOL_NODES.find((t) => t.name === name);
     return {
       id,
-      emoji: known?.emoji ?? "🔧",
+      mono: known?.mono ?? name.slice(0, 2).toUpperCase(),
       label: name,
       kind: "tool",
       role: `deterministic "${name}" tool — executed by the tool layer, never by the model`,
