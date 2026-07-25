@@ -29,7 +29,7 @@ which prepends the repo root to ``sys.path``.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 # ---------------------------------------------------------------------------
@@ -295,4 +295,202 @@ def build_default_registry() -> ToolRegistry:
     ):
         registry.register(make_stub_spec(name, description, source_type, source_name))
 
+    return registry
+
+
+# ---------------------------------------------------------------------------
+# Full registry: every merged adapter wired (issue #52, first real E2E)
+# ---------------------------------------------------------------------------
+
+#: Feature-collection tools return thousands of geojson features (cadastre:
+#: ~10k). The registry serves the model a deterministic digest (counts + a
+#: bounded sample with geometry reduced to a centroid) so tool results fit in
+#: the 8k-token Gemma context. Truncation is explicit in the payload.
+MAX_DIGEST_FEATURES = 12
+
+FIRMS_ARGS_SCHEMA: Dict[str, Any] = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "get_firms arguments",
+    "type": "object",
+    "properties": {"mode": _MODE_PROPERTY},
+    "additionalProperties": False,
+}
+
+CADASTRE_ARGS_SCHEMA: Dict[str, Any] = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "get_cadastre arguments",
+    "type": "object",
+    "properties": {},
+    "additionalProperties": False,
+}
+
+OSM_ARGS_SCHEMA: Dict[str, Any] = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "get_osm arguments",
+    "type": "object",
+    "properties": {
+        "category": {
+            "type": "string",
+            "enum": ["road", "track", "water_point", "camping", "industrial", "critical_asset"],
+            "description": "Optional single OSM category filter.",
+        }
+    },
+    "additionalProperties": False,
+}
+
+RESOURCES_ARGS_SCHEMA: Dict[str, Any] = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "get_resources arguments",
+    "type": "object",
+    "properties": {
+        "section": {
+            "type": "string",
+            "enum": ["units", "resources", "roads", "safety_rules"],
+            "description": "Optional single section; omit for units + resources together.",
+        }
+    },
+    "additionalProperties": False,
+}
+
+
+def _feature_centroid(geometry: Dict[str, Any]) -> Optional[List[float]]:
+    """Mean [lon, lat] of every coordinate pair found in the geometry."""
+    points: List[Tuple[float, float]] = []
+
+    def walk(node: Any) -> None:
+        if (
+            isinstance(node, (list, tuple))
+            and len(node) == 2
+            and all(isinstance(v, (int, float)) for v in node)
+        ):
+            points.append((float(node[0]), float(node[1])))
+        elif isinstance(node, (list, tuple)):
+            for item in node:
+                walk(item)
+
+    walk(geometry.get("coordinates"))
+    if not points:
+        return None
+    return [
+        round(sum(p[0] for p in points) / len(points), 6),
+        round(sum(p[1] for p in points) / len(points), 6),
+    ]
+
+
+def _digest_feature(feature: Dict[str, Any]) -> Dict[str, Any]:
+    """One geojson feature reduced to properties + centroid (no full geometry)."""
+    digest: Dict[str, Any] = {"properties": dict(feature.get("properties") or {})}
+    geometry = feature.get("geometry")
+    if isinstance(geometry, dict):
+        centroid = _feature_centroid(geometry)
+        if centroid is not None:
+            digest["centroid_lon_lat"] = centroid
+    return digest
+
+
+def _digest_feature_result(result: Dict[str, Any], max_features: int = MAX_DIGEST_FEATURES) -> Dict[str, Any]:
+    """Bound a ToolResult's data.features to a digest the LLM context can hold."""
+    data = result.get("data")
+    if not isinstance(data, dict) or not isinstance(data.get("features"), list):
+        return result
+    features = data["features"]
+    digested = dict(data)
+    digested["features"] = [_digest_feature(f) for f in features[:max_features]]
+    digested["total_feature_count"] = len(features)
+    if len(features) > max_features:
+        digested["features_truncated_to"] = max_features
+        digested["truncated_for_context"] = True
+    result = dict(result)
+    result["data"] = digested
+    return result
+
+
+def build_full_registry() -> ToolRegistry:
+    """Default registry + the remaining merged adapters (firms/cadastre/osm/resources).
+
+    Used by the real incident pipeline (issue #52): every allowlisted tool is
+    executable. Feature-collection payloads are digested (see
+    :data:`MAX_DIGEST_FEATURES`) so results stay LLM-context-sized; full raw
+    data remains available through the adapters themselves.
+    """
+    from tools.cadastre import loader as cadastre_loader
+    from tools.firms import adapter as firms_adapter
+    from tools.osm import loader as osm_loader
+    from tools.resources.store import get_store
+
+    registry = build_default_registry()
+
+    def _get_firms(mode: Optional[str] = None) -> Dict[str, Any]:
+        return firms_adapter.get(mode=mode)
+
+    def _get_cadastre() -> Dict[str, Any]:
+        return _digest_feature_result(cadastre_loader.get())
+
+    def _get_osm(category: Optional[str] = None) -> Dict[str, Any]:
+        return _digest_feature_result(osm_loader.get(category=category))
+
+    def _get_resources(section: Optional[str] = None) -> Dict[str, Any]:
+        store = get_store()
+        if section is not None:
+            return store.get(section)
+        units = store.get("units")
+        resources = store.get("resources")
+        # Raw payload: the executor wraps it with this spec's seeded_demo provenance.
+        return {
+            "units": (units.get("data") or {}).get("units", []),
+            "resources": (resources.get("data") or {}).get("resources", []),
+        }
+
+    registry.register(
+        ToolSpec(
+            name="get_firms",
+            description="NASA FIRMS satellite active-fire hotspot detections for the demo bbox (cached offline).",
+            args_schema=FIRMS_ARGS_SCHEMA,
+            handler=_get_firms,
+            timeout_s=15.0,
+            source_type="live_public",
+            source_name=firms_adapter.SOURCE_NAME,
+            supports_cached_mode=True,
+        ),
+        replace=True,
+    )
+    registry.register(
+        ToolSpec(
+            name="get_cadastre",
+            description="Cadastral buildings near the incident (Etalab, pre-clipped local cache; digest of ~10k footprints).",
+            args_schema=CADASTRE_ARGS_SCHEMA,
+            handler=_get_cadastre,
+            timeout_s=10.0,
+            source_type="cached_public",
+            source_name=cadastre_loader.SOURCE_NAME,
+            supports_cached_mode=False,
+        ),
+        replace=True,
+    )
+    registry.register(
+        ToolSpec(
+            name="get_osm",
+            description="OpenStreetMap features for the demo bbox: roads, tracks, water points, industrial, critical assets (local cache).",
+            args_schema=OSM_ARGS_SCHEMA,
+            handler=_get_osm,
+            timeout_s=10.0,
+            source_type="cached_public",
+            source_name=osm_loader.SOURCE_NAME,
+            supports_cached_mode=False,
+        ),
+        replace=True,
+    )
+    registry.register(
+        ToolSpec(
+            name="get_resources",
+            description="Seeded scenario state: engaged units and operational resources (water points, reserves).",
+            args_schema=RESOURCES_ARGS_SCHEMA,
+            handler=_get_resources,
+            timeout_s=5.0,
+            source_type="seeded_demo",
+            source_name="resources-seed",
+            supports_cached_mode=False,
+        ),
+        replace=True,
+    )
     return registry
