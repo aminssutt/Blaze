@@ -1,7 +1,9 @@
-// Operator navigation — one bar, three audiences (asked by Selyan):
-//   Essentiel    /simple  — any firefighter: what the agents just did, plainly
-//   Intervention /expert  — the commander's full control room (map, panels)
-//   Système      /system  — is the machine healthy: vLLM, GPU, STT/TTS
+// Operator navigation — one bar, four audiences:
+//   Essentials /simple   — any firefighter: what the agents just did, plainly
+//   Monitor    /monitor  — THE agent-control view (asked by Lakhdar): pipeline
+//                          graph + per-node terminals, the new default
+//   Legacy     /expert   — the previous full control room, kept accessible
+//   System     /system   — is the machine healthy: vLLM, GPU, STT/TTS
 //
 // Pure navigation furniture on the control-room tokens; the pages own their
 // content. /demo (guided cinematic) keeps living outside these tabs.
@@ -13,7 +15,8 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   { href: "/simple", label: "Essentials", title: "The essentials, for everyone" },
-  { href: "/expert", label: "Intervention", title: "The chief's control room" },
+  { href: "/monitor", label: "Monitor", title: "Agent control — pipeline graph and per-node terminals" },
+  { href: "/expert", label: "Legacy", title: "The previous control room (detailed view)" },
   { href: "/system", label: "System", title: "Machine and AI health" },
 ] as const;
 
