@@ -103,6 +103,11 @@ Hard grading rules:
   timing conflicts, "single point of failure", "the data might be wrong") are `minor`
   or `required_confirmations` UNLESS the plan text itself creates the conflict with no
   mitigation.
+- A dependency between two actions of the SAME plan (unit A moves while unit B
+  confirms something) is `material` ONLY if the plan text makes A's safety
+  conditional on B finishing first. When the road graph already rates A's route as
+  open and compatible with A's vehicle, ordering A to move immediately is the
+  correct urgency call — grade route-viability doubts as `required_confirmations`.
 - DEFAULT VERDICT: when every mechanical check passes and the plan's posture is
   defensive (retreat / stand-off / suspension / confirmation), output
   `recommended_status: "pass"` with your remaining concerns as

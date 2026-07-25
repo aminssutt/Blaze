@@ -92,3 +92,16 @@ given, containing:
     minimum distance in the `instruction` (use the 300 m hazmat default when nothing
     better is known) and an abort criterion. When two units share a road, state the
     deconfliction (order of march or timing) in the `reason`.
+13. **Minimal defensive plan, no self-created dependencies.** (Documented fix for
+    issue #52, live runs.) With only initial, unconfirmed reports, produce the
+    MINIMAL defensive plan:
+    - Route retreats on roads the ROAD_GRAPH already marks open and compatible with
+      the unit's vehicle type, citing the road graph as evidence. Do NOT task
+      another unit to "confirm" a route the graph already rates for that vehicle —
+      that manufactures a dependency between your own actions and delays the
+      retreat.
+    - Keep reconnaissance units at their CURRENT position (or move them AWAY from
+      the hazard) observing from an explicit stand-off distance. Never move any
+      unit TOWARD a reported-but-unassessed hazard.
+    - Never make one unit's safety conditional on another unit completing a task
+      first.
