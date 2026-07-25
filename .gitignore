@@ -40,3 +40,4 @@ tmp/
 # Generated TTS test output
 speech/tts/*.wav
 speech/tts/output/
+.stack-logs/
