@@ -1,0 +1,77 @@
+/**
+ * BLAZE design tokens — SINGLE SOURCE OF TRUTH.
+ *
+ * Dark control-room theme for the firefighter command interface.
+ * Imported by `frontend/app/globals.css` (relative @import). Do NOT
+ * redefine these variables anywhere else; components consume them via
+ * `var(--blaze-*)` or the Tailwind theme mapping in globals.css.
+ */
+
+:root {
+  /* ---------------------------------------------------------------- */
+  /* Color — surfaces (very dark control-room background)             */
+  /* ---------------------------------------------------------------- */
+  --blaze-bg: #0a0c10; /* page background */
+  --blaze-bg-raised: #11141a; /* panel background */
+  --blaze-bg-overlay: #181c24; /* hover / overlay surfaces */
+  --blaze-border: #232936; /* panel & separator borders */
+  --blaze-border-strong: #343d4f; /* emphasized borders */
+
+  /* ---------------------------------------------------------------- */
+  /* Color — text                                                     */
+  /* ---------------------------------------------------------------- */
+  --blaze-text: #e8eaf0; /* primary text */
+  --blaze-text-muted: #9aa3b5; /* secondary text */
+  --blaze-text-faint: #5c6577; /* placeholders, disabled */
+
+  /* ---------------------------------------------------------------- */
+  /* Color — accents (fire amber/orange identity)                     */
+  /* ---------------------------------------------------------------- */
+  --blaze-accent: #f59e0b; /* amber — primary accent */
+  --blaze-accent-strong: #f97316; /* fire orange — emphasis */
+  --blaze-accent-dim: #7c4a03; /* muted amber for borders/fills */
+
+  /* ---------------------------------------------------------------- */
+  /* Color — semantic status                                          */
+  /* ---------------------------------------------------------------- */
+  --blaze-alert: #ef4444; /* alert red — critical / block */
+  --blaze-alert-dim: #7f1d1d;
+  --blaze-ok: #22c55e; /* status green — pass / online */
+  --blaze-ok-dim: #14532d;
+  --blaze-warn: #eab308; /* caution yellow — revise / degraded */
+  --blaze-info: #38bdf8; /* info blue — tool/agent activity */
+
+  /* ---------------------------------------------------------------- */
+  /* Typography                                                       */
+  /* ---------------------------------------------------------------- */
+  /* UI text (--font-geist-sans is injected by next/font in app/layout.tsx) */
+  --blaze-font-sans: var(--font-geist-sans, "Inter"), system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+  /* Technical data: ids, coordinates, latencies, transcripts, metrics */
+  --blaze-font-mono: var(--font-geist-mono, "JetBrains Mono"), ui-monospace,
+    "Cascadia Mono", Consolas, monospace;
+
+  --blaze-text-xs: 0.6875rem; /* 11px — badges, provenance */
+  --blaze-text-sm: 0.8125rem; /* 13px — dense panel body */
+  --blaze-text-md: 0.9375rem; /* 15px — default */
+  --blaze-text-lg: 1.125rem; /* 18px — panel titles */
+  --blaze-text-xl: 1.5rem; /* 24px — header wordmark */
+
+  /* ---------------------------------------------------------------- */
+  /* Spacing scale                                                    */
+  /* ---------------------------------------------------------------- */
+  --blaze-space-1: 0.25rem;
+  --blaze-space-2: 0.5rem;
+  --blaze-space-3: 0.75rem;
+  --blaze-space-4: 1rem;
+  --blaze-space-6: 1.5rem;
+  --blaze-space-8: 2rem;
+
+  /* ---------------------------------------------------------------- */
+  /* Radii & misc                                                     */
+  /* ---------------------------------------------------------------- */
+  --blaze-radius-sm: 4px;
+  --blaze-radius-md: 8px;
+  --blaze-radius-lg: 12px;
+  --blaze-focus-ring: 0 0 0 2px var(--blaze-accent);
+}
