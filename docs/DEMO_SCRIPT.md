@@ -9,7 +9,7 @@ Target duration: **approximately 3 minutes** (0:00 → 3:10). The demo is a scri
 | 1 | Alpha 3 | « Alpha 3 au PC, fumée noire très dense près du hangar. La D17 est bloquée pour notre CCF et on entend plusieurs explosions. » | Dense smoke near hangar; D17 blocked for CCF; explosions heard but **unconfirmed**; high urgency |
 | 2 | Alpha 3 | « Alpha 3, mise à jour : il nous reste environ trente pour cent d'eau et la visibilité devient presque nulle. » | Alpha 3 water → 30%; visibility critical; mission must be reassessed |
 | 3 | Bravo 2 | « Bravo 2 au PC, le vent vient de tourner vers le sud-est. Le feu progresse beaucoup plus vite vers la D17. » | Field-reported wind shift; conflicts with/updates weather context; propagation risk increases |
-| 4 | Charlie 1 | « Charlie 1 au PC, correction : la D17 n'est pas totalement bloquée. Les véhicules légers passent encore, mais pas les CCF. » | **Correction**: D17 restricted by vehicle type; previous event updated, not duplicated |
+| 4 | Alpha 3 | « Alpha 3 au poste de commandement. Correction concernant la D17 : la route n'est pas totalement bloquée, mais elle reste inaccessible aux camions lourds. Les véhicules légers peuvent encore passer par le côté nord. » | **Correction**: D17 restricted by vehicle type; previous event updated, not duplicated. Charlie 1 (light vehicle) is then tasked to verify. |
 | 5 | Bravo 2 | « Bravo 2 au PC, explosions confirmées derrière le hangar. Présence possible de bouteilles de gaz. On reste à distance. » | Explosions **confirmed**; possible gas cylinders; exclusion perimeter required |
 
 The demo defaults to the **radio-degraded** versions of these audios, with a one-click fallback to clean audio.
