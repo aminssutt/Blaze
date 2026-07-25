@@ -208,11 +208,23 @@ class ScenarioPipeline(IncidentPipeline):
 
         status_before = entry.get("status")
         entry["status"] = "restricted"
-        entry.setdefault("restrictions", [])
-        entry["restrictions"].append(
-            "CORRECTED (radio audio_04): not fully blocked — impassable for heavy "
-            "trucks (CCF), light vehicles can still pass via the north side"
+        # Structured restriction objects — the rule engine's
+        # check_vehicle_road_compatibility reads {vehicle_type, reason} dicts
+        # (live finding #53 run 3: a free-text string here crashes the review).
+        restrictions = [
+            r for r in (entry.get("restrictions") or []) if isinstance(r, Mapping)
+        ]
+        restrictions.append(
+            {
+                "vehicle_type": "CCF",
+                "reason": (
+                    "CORRECTED (radio audio_04): D17 not fully blocked — "
+                    "impassable for heavy trucks (CCF); light vehicles can "
+                    "still pass via the north side"
+                ),
+            }
         )
+        entry["restrictions"] = restrictions
         entry["corrected_by_event"] = correction.get("event_id") if correction else None
         entry["corrects_event_id"] = corrects_id
 
