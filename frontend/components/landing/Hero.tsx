@@ -100,7 +100,7 @@ export default function Hero() {
             Open demo →
           </Link>
           <span className="font-mono text-[11px]" style={{ color: "var(--blaze-text-faint)" }}>
-            live control room · 5 audios · reset &amp; rerun anytime
+            guided live demo · 5 audios · expert control room inside
           </span>
         </motion.div>
       </div>
