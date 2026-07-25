@@ -1,0 +1,30 @@
+[project]
+name = "blaze-agent-radio-intelligence"
+version = "0.1.0"
+description = "BLAZE Agent 1 — Radio Intelligence: structured RadioEvent extraction from firefighter radio transcripts"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.27",
+    "pydantic>=2.6",
+    "jsonschema>=4.22",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "respx>=0.21",
+]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+# Imported as `agents.radio_intelligence.*` from the repo root (namespace package).
+# Installing this project just pulls the dependencies; run pytest from agents/radio_intelligence.
+[tool.setuptools]
+packages = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
