@@ -376,6 +376,48 @@ class IncidentPipeline:
             logger.info("merged %d seeded road(s) into the snapshot: %s", len(added), added)
         return snapshot
 
+    @staticmethod
+    def _revision_context(
+        plan: Dict[str, Any], review: Mapping[str, Any]
+    ) -> Dict[str, Any]:
+        """Slim previous-plan context + safety feedback for the re-plan prompt.
+
+        Orchestrator-level feedback channel (no agent code change): the safety
+        review's objections travel VERBATIM (bounded) to the planner inside the
+        previous-plan object. The context is pruned because the full plan +
+        full review pushed the v2 planning prompt past the 8k window in live
+        runs (vLLM 400: prompt + max_tokens > max_model_len).
+        """
+
+        def clip(items: Any, n: int = 4, width: int = 400) -> List[str]:
+            return [str(item)[:width] for item in list(items or [])[:n]]
+
+        failed_rules = [
+            str(c.get("rule_id"))
+            for c in review.get("rule_checks", [])
+            if c.get("status") == "fail" or c.get("passed") is False
+        ]
+        return {
+            "plan_id": plan.get("plan_id"),
+            "incident_id": plan.get("incident_id"),
+            "version": plan.get("version"),
+            "summary": plan.get("summary"),
+            "objectives": plan.get("objectives", []),
+            "unit_actions": plan.get("unit_actions", []),
+            "uncertainties": clip(plan.get("uncertainties"), 5),
+            "safety_review_feedback": {
+                "status": review.get("status"),
+                "critical_objections": clip(review.get("critical_objections")),
+                "required_changes": clip(review.get("required_changes")),
+                "required_confirmations": clip(review.get("required_confirmations")),
+                "remediation_hints": [
+                    f"{rule_id}: {RULE_REMEDIATION_HINTS[rule_id]}"
+                    for rule_id in failed_rules
+                    if rule_id in RULE_REMEDIATION_HINTS
+                ],
+            },
+        }
+
     def _approval_decision(self, plan: Mapping[str, Any]) -> Dict[str, Any]:
         """PROGRAMMATIC approval for the E2E harness (see module docstring).
 
@@ -559,25 +601,7 @@ class IncidentPipeline:
         revision = 0
         while review["status"] != "pass" and revision < self.max_revisions:
             revision += 1
-            previous = plan.to_dict()
-            # Orchestrator-level feedback channel: the safety review travels to
-            # the planner inside the previous-plan context (no agent code change).
-            failed_rules = [
-                str(c.get("rule_id"))
-                for c in review.get("rule_checks", [])
-                if c.get("status") == "fail" or c.get("passed") is False
-            ]
-            previous["safety_review_feedback"] = {
-                "status": review["status"],
-                "critical_objections": review.get("critical_objections", []),
-                "required_changes": review.get("required_changes", []),
-                "required_confirmations": review.get("required_confirmations", []),
-                "remediation_hints": [
-                    f"{rule_id}: {RULE_REMEDIATION_HINTS[rule_id]}"
-                    for rule_id in failed_rules
-                    if rule_id in RULE_REMEDIATION_HINTS
-                ],
-            }
+            previous = self._revision_context(plan.to_dict(), review)
             with self._stage(f"tactical_planning_v{revision + 1}"):
                 plan = await self.planning_agent.draft_plan(
                     radio_events, snapshot, self.units_doc, previous_plan=previous
