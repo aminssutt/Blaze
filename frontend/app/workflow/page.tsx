@@ -10,12 +10,15 @@
  * per-node overlay (terminal + expert panel) raised on click.
  *
  * Everything renders from the SAME incident store as /expert: mock replay or
- * live SSE is chosen by lib/session (StreamModeToggle), the store never knows
+ * live SSE is chosen by lib/session (env default / localStorage override in
+ * lib/streamMode — no visual toggle here on purpose), the store never knows
  * which — so this page works identically in both modes.
  *
- * LAYOUT — OpsNav, header (incident identity + status chip), minimal control
- * row (start · reset · speed — Lakhdar's spec), then the main row: graph
- * (flex-1) + commander aside (fixed width at xl). Never scrolls horizontally.
+ * LAYOUT — OpsNav, header (incident identity + compact player controls +
+ * status chip, Lakhdar's spec: play/pause · reset · speed, top right), then
+ * the main row: graph (flex-1) + commander aside (fixed width at xl). The
+ * approval act is always fully visible — only the dispatch list may scroll.
+ * Never scrolls horizontally.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -26,7 +29,6 @@ import {
 } from "@/lib/monitorPipeline";
 import OpsNav from "@/components/ops/OpsNav";
 import SystemBanners from "@/components/banners/SystemBanners";
-import StreamModeToggle from "@/components/controls/StreamModeToggle";
 import { PLAYER_SPEEDS, type PlayerSpeed } from "@/lib/streamPlayer";
 import ApprovalGate from "@/components/approval/ApprovalGate";
 import DispatchPanel from "@/components/dispatch/DispatchPanel";
@@ -97,16 +99,15 @@ export default function MonitorPage() {
             </div>
           </div>
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          {/* compact player controls — play/pause · reset · speed (Lakhdar) */}
+          <HeaderPlayerControls />
           <IncidentStatusChip />
         </div>
       </header>
 
       {/* zero height until a fallback/error is reduced */}
       <SystemBanners />
-
-      {/* control row — minimal on purpose (Lakhdar): start · reset · speed */}
-      <WorkflowControls />
 
       {/* main row — pipeline graph + commander aside */}
       <main
@@ -128,10 +129,12 @@ export default function MonitorPage() {
 
         {/* commander aside — validation then the dispatched voice messages.
             Same amber commander identity as /expert, escalating while the
-            decision is pending. */}
+            decision is pending. The approval act is the centre of the demo:
+            it stays FULLY visible (natural height, never scrolls) — when
+            height runs out, only the dispatch list below scrolls internally. */}
         <aside
           aria-label="Commander station"
-          className={`flex w-full shrink-0 flex-col gap-2 rounded-md border p-1.5 xl:min-h-0 xl:w-[360px] ${
+          className={`flex w-full shrink-0 flex-col gap-2 rounded-md border p-1.5 xl:min-h-0 xl:w-[400px] ${
             decisionPending
               ? "blaze-cta-pulse border-accent bg-accent-dim/15"
               : "border-accent-dim/60 bg-accent-dim/10"
@@ -145,8 +148,9 @@ export default function MonitorPage() {
               — approval, then dispatch
             </span>
           </div>
-          <ApprovalGate className="xl:flex-[2]" />
-          <DispatchPanel className="xl:flex-[3]" />
+          <ResidualObjections />
+          <ApprovalGate className="shrink-0" />
+          <DispatchPanel className="xl:min-h-0 xl:flex-1" />
         </aside>
       </main>
 
@@ -157,45 +161,93 @@ export default function MonitorPage() {
   );
 }
 
-/** Minimal control row (Lakhdar's spec): start · reset · speed — nothing else. */
-function WorkflowControls() {
+/**
+ * Compact player controls of the header (Lakhdar's spec) — play/pause toggle,
+ * reset and the x1/x2/x5 speed mini-segments, nothing else. Stream mode is
+ * driven by env/localStorage (lib/streamMode), not by the UI.
+ */
+function HeaderPlayerControls() {
   const controls = useSessionControls();
   const player = usePlayerState();
+  const playing = player.status === "playing";
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-3 rounded-md border border-edge bg-surface px-3 py-1.5">
+    <div
+      className="flex items-center gap-1.5"
+      role="group"
+      aria-label="Replay controls"
+    >
       <button
         type="button"
-        onClick={() => controls.start()}
-        className="rounded-sm border border-accent-dim px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-wide text-accent hover:border-accent"
+        onClick={() => controls.toggle()}
+        aria-label={playing ? "Pause replay" : "Start replay"}
+        title={playing ? "Pause" : "Start / resume"}
+        className={`rounded-sm border px-2.5 py-1 font-mono text-[11px] font-semibold leading-none ${
+          playing
+            ? "border-accent bg-accent-dim/30 text-accent"
+            : "border-accent-dim text-accent hover:border-accent"
+        }`}
       >
-        ▶ start
+        {playing ? "⏸" : "▶"}
       </button>
       <button
         type="button"
         onClick={() => controls.reset()}
-        className="rounded-sm border border-edge px-3 py-1 font-mono text-[11px] uppercase tracking-wide text-muted hover:border-edge-strong hover:text-foreground"
+        aria-label="Reset replay"
+        title="Reset"
+        className="rounded-sm border border-edge px-2.5 py-1 font-mono text-[11px] leading-none text-muted hover:border-edge-strong hover:text-foreground"
       >
-        ↺ reset
+        ↺
       </button>
-      <div className="flex items-center gap-1" role="group" aria-label="Replay speed">
+      <div
+        className="flex items-center overflow-hidden rounded-sm border border-edge"
+        role="group"
+        aria-label="Replay speed"
+      >
         {PLAYER_SPEEDS.map((speed: PlayerSpeed) => (
           <button
             key={speed}
             type="button"
             onClick={() => controls.setSpeed(speed)}
-            className={`rounded-sm border px-2 py-1 font-mono text-[10px] ${
+            aria-pressed={player.speed === speed}
+            className={`px-2 py-1 font-mono text-[10px] leading-none ${
               player.speed === speed
-                ? "border-accent text-accent"
-                : "border-edge text-muted hover:border-edge-strong"
+                ? "bg-accent-dim/40 font-semibold text-accent"
+                : "text-muted hover:text-foreground"
             }`}
           >
             x{speed}
           </button>
         ))}
       </div>
-      <div className="ml-auto">
-        <StreamModeToggle />
+    </div>
+  );
+}
+
+/**
+ * Residual safety objections surfaced right above the approval act while the
+ * commander's decision is pending — local wrapper so the SHARED ApprovalGate
+ * (also used by /expert) stays byte-for-byte untouched.
+ */
+function ResidualObjections() {
+  const { safetyReview, approvalRequested, approval } = useIncidentState();
+  const pending = approvalRequested && !approval;
+  const objections = safetyReview?.critical_objections ?? [];
+  if (!pending || objections.length === 0) return null;
+  return (
+    <div
+      data-testid="workflow-residual-objections"
+      className="shrink-0 rounded-sm border border-warn/60 bg-warn/10 p-2"
+    >
+      <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-warn">
+        objections résiduelles ({objections.length})
       </div>
+      <ul className="mt-1 flex flex-col gap-0.5">
+        {objections.map((o) => (
+          <li key={o} className="text-[11px] leading-snug text-foreground">
+            ✗ {o}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
