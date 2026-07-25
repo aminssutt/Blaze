@@ -55,8 +55,8 @@ function ThinkingDots() {
 
 const STATUS_DOT: Record<NodeStatus, { cls: string; label: string }> = {
   standby: { cls: "bg-faint/40", label: "standby" },
-  active: { cls: "bg-info animate-pulse", label: "actif" },
-  done: { cls: "bg-ok", label: "terminé" },
+  active: { cls: "bg-info animate-pulse", label: "working" },
+  done: { cls: "bg-ok", label: "done" },
 };
 
 export default function NodeTerminal({

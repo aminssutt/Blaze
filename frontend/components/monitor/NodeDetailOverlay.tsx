@@ -36,8 +36,8 @@ import type { ApprovalDecision } from "@/lib/contracts";
 
 const STATUS_LABEL: Record<NodeStatus, { label: string; cls: string }> = {
   standby: { label: "standby", cls: "text-faint" },
-  active: { label: "actif", cls: "text-info" },
-  done: { label: "terminé", cls: "text-ok" },
+  active: { label: "working", cls: "text-info" },
+  done: { label: "done", cls: "text-ok" },
 };
 
 /** Decision history block of the HUMAN GATE pane (approval.received events). */
@@ -54,7 +54,7 @@ function DecisionHistory() {
   return (
     <div className="shrink-0 rounded-md border border-edge bg-surface px-3 py-2">
       <h3 className="font-mono text-[10px] uppercase tracking-[0.14em] text-faint">
-        historique des décisions
+        decision history
       </h3>
       <ul className="mt-1 flex flex-col gap-1">
         {decisions.map((d) => (
@@ -152,7 +152,7 @@ export default function NodeDetailOverlay({
           {/* backdrop — click-outside closes; the graph keeps living behind */}
           <button
             type="button"
-            aria-label="Fermer le détail"
+            aria-label="Close detail"
             onClick={onClose}
             className="absolute inset-0 cursor-default bg-black/60 backdrop-blur-[3px]"
           />
@@ -160,7 +160,7 @@ export default function NodeDetailOverlay({
           <motion.div
             role="dialog"
             aria-modal="true"
-            aria-label={`${info.label} — détail live`}
+            aria-label={`${info.label} — live detail`}
             initial={reduce ? false : { opacity: 0, scale: 0.97, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={reduce ? undefined : { opacity: 0, scale: 0.98, y: 8 }}
@@ -197,7 +197,7 @@ export default function NodeDetailOverlay({
               <button
                 type="button"
                 onClick={onClose}
-                aria-label="Fermer"
+                aria-label="Close"
                 className="grid size-8 shrink-0 place-items-center rounded-md border border-edge bg-overlay font-mono text-[13px] text-muted transition-colors hover:border-edge-strong hover:text-foreground"
               >
                 ✕
@@ -217,10 +217,10 @@ export default function NodeDetailOverlay({
             {/* footer hint */}
             <footer className="flex shrink-0 items-center justify-between border-t border-edge bg-surface px-4 py-2">
               <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-faint">
-                live · le flux continue derrière
+                live · the stream keeps running behind
               </span>
               <span className="font-mono text-[10px] text-faint">
-                esc / clic à l&apos;extérieur pour fermer
+                esc / click outside to close
               </span>
             </footer>
           </motion.div>

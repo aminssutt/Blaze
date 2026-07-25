@@ -73,63 +73,63 @@ export const NODE_INFO: Record<PipelineNodeId, MonitorNodeInfo> = {
     emoji: "📻",
     label: "Ingestion",
     kind: "service",
-    role: "réception du trafic radio terrain (audios du scénario)",
+    role: "field radio traffic intake (scenario audio messages)",
   },
   stt: {
     id: "stt",
     emoji: "📝",
     label: "STT",
     kind: "service",
-    role: "transcription locale faster-whisper — aucun cloud",
+    role: "local faster-whisper transcription — no cloud",
   },
   radio_intelligence: {
     id: "radio_intelligence",
     emoji: "🤖",
     label: "Radio Intelligence",
     kind: "agent",
-    role: "extraction de faits structurés depuis chaque transcript",
+    role: "structured fact extraction from every transcript",
   },
   situation_context: {
     id: "situation_context",
     emoji: "🌍",
     label: "Situation Context",
     kind: "agent",
-    role: "synthèse de situation via 7 outils allowlistés, provenance tracée",
+    role: "situation synthesis via 7 allowlisted tools, provenance-tracked",
   },
   tactical_planning: {
     id: "tactical_planning",
     emoji: "🗺️",
     label: "Tactical Planning",
     kind: "agent",
-    role: "fusion faits + contexte en plan tactique versionné",
+    role: "facts + context fused into a versioned tactical plan",
   },
   safety_critic: {
     id: "safety_critic",
     emoji: "🛡️",
     label: "Safety Critic",
     kind: "agent",
-    role: "revue adversariale du plan — objections et règles de sécurité",
+    role: "adversarial plan review — objections and safety rules",
   },
   human_gate: {
     id: "human_gate",
     emoji: "👤",
     label: "Human Gate",
     kind: "human",
-    role: "validation commandant — rien ne part sans décision humaine",
+    role: "commander approval — nothing goes out without a human decision",
   },
   dispatch: {
     id: "dispatch",
     emoji: "📢",
     label: "Dispatch",
     kind: "agent",
-    role: "messages par unité générés après approbation",
+    role: "per-unit messages generated after approval",
   },
   tts: {
     id: "tts",
     emoji: "🔊",
     label: "TTS",
     kind: "service",
-    role: "synthèse vocale locale des messages de diffusion",
+    role: "local text-to-speech for the dispatch messages",
   },
 };
 
@@ -158,7 +158,7 @@ export function nodeInfo(id: MonitorNodeId): MonitorNodeInfo {
       emoji: known?.emoji ?? "🔧",
       label: name,
       kind: "tool",
-      role: `outil déterministe « ${name} » — exécuté par la couche outils, jamais par le modèle`,
+      role: `deterministic "${name}" tool — executed by the tool layer, never by the model`,
     };
   }
   return NODE_INFO[id as PipelineNodeId];
@@ -274,7 +274,7 @@ function truncate(text: string, max = 120): string {
 function compactValue(value: unknown): string {
   if (value === null || value === undefined) return "∅";
   if (typeof value === "number") return String(value);
-  if (typeof value === "boolean") return value ? "oui" : "non";
+  if (typeof value === "boolean") return value ? "yes" : "no";
   if (typeof value === "string") return truncate(value, 24);
   if (Array.isArray(value)) return `[${value.length}]`;
   if (typeof value === "object") return `{${Object.keys(value as object).length}}`;
@@ -284,7 +284,7 @@ function compactValue(value: unknown): string {
 /** Auditable one-line summary of a tool result payload (never model text). */
 function summarizeToolData(data: ToolResult["data"]): string {
   if (data === null || data === undefined) return "—";
-  if (Array.isArray(data)) return `${data.length} éléments`;
+  if (Array.isArray(data)) return `${data.length} items`;
   const entries = Object.entries(data);
   if (entries.length === 0) return "∅";
   const shown = entries
@@ -375,12 +375,12 @@ function eventLines(lines: TermLine[], event: EventEnvelope): void {
   const p = event.payload as Record<string, unknown>;
   switch (event.event_type) {
     case "incident.started": {
-      cmd(lines, event, "ingest", `incident « ${String(p.name ?? event.incident_id)} »`);
+      cmd(lines, event, "ingest", `incident "${String(p.name ?? event.incident_id)}"`);
       const loc = p.location as { label?: string } | undefined;
       out(
         lines,
         event,
-        `↳ zone ${loc?.label ?? "—"} · réseau ${String(p.network_mode ?? "—")} · audio ${String(p.audio_mode ?? "—")}`,
+        `↳ zone ${loc?.label ?? "—"} · network ${String(p.network_mode ?? "—")} · audio ${String(p.audio_mode ?? "—")}`,
       );
       break;
     }
@@ -389,7 +389,7 @@ function eventLines(lines: TermLine[], event: EventEnvelope): void {
         lines,
         event,
         "ingest",
-        `${String(p.audio_id)} reçu — ${String(p.speaker_hint ?? "unité inconnue")}`,
+        `${String(p.audio_id)} received — ${String(p.speaker_hint ?? "unknown unit")}`,
       );
       out(
         lines,
@@ -399,9 +399,9 @@ function eventLines(lines: TermLine[], event: EventEnvelope): void {
       break;
     case "network.mode.changed": {
       const mode = String(p.network_mode ?? p.mode ?? "—");
-      cmd(lines, event, "ingest", `réseau → ${mode}`);
+      cmd(lines, event, "ingest", `network → ${mode}`);
       if (mode.toLowerCase() !== "online")
-        out(lines, event, "⚠ mode dégradé — bascule sur les caches locaux");
+        out(lines, event, "⚠ degraded mode — falling back to local caches");
       break;
     }
 
@@ -410,14 +410,14 @@ function eventLines(lines: TermLine[], event: EventEnvelope): void {
         lines,
         event,
         "stt",
-        `transcription ${String(p.audio_id)} — ${String(p.model_name ?? "modèle local")}`,
+        `transcribing ${String(p.audio_id)} — ${String(p.model_name ?? "local model")}`,
       );
       break;
     case "transcript.ready": {
       const t = event.payload as unknown as TranscriptResult;
-      cmd(lines, event, "stt", `transcript ${t.audio_id} prêt · ${t.latency_ms} ms`);
-      out(lines, event, `⇒ « ${truncate(t.text)} »`);
-      if (t.fallback_used) out(lines, event, "⚠ fallback utilisé (audio clean / transcript de référence)");
+      cmd(lines, event, "stt", `transcript ${t.audio_id} ready · ${t.latency_ms} ms`);
+      out(lines, event, `⇒ "${truncate(t.text)}"`);
+      if (t.fallback_used) out(lines, event, "⚠ fallback used (clean audio / reference transcript)");
       break;
     }
 
@@ -449,13 +449,13 @@ function eventLines(lines: TermLine[], event: EventEnvelope): void {
         lines,
         event,
         "extract",
-        `${e.event_id} · ${e.event_type} · ${e.unit_id ?? "unité ?"} · urgence ${e.urgency}`,
+        `${e.event_id} · ${e.event_type} · ${e.unit_id ?? "unit ?"} · urgency ${e.urgency}`,
       );
       for (const fact of e.facts) out(lines, event, `⇒ ${fact}`);
       if (e.is_correction && e.corrects_event_id)
-        out(lines, event, `✗ corrige ${e.corrects_event_id} — l'original reste au journal`);
+        out(lines, event, `✗ corrects ${e.corrects_event_id} — the original stays in the log`);
       for (const u of e.uncertainties ?? []) out(lines, event, `⚠ ${u}`);
-      out(lines, event, `↳ evidence: « ${truncate(e.evidence_text, 90)} » · confiance ${e.confidence.toFixed(2)}`);
+      out(lines, event, `↳ evidence: "${truncate(e.evidence_text, 90)}" · confidence ${e.confidence.toFixed(2)}`);
       break;
     }
 
@@ -483,76 +483,76 @@ function eventLines(lines: TermLine[], event: EventEnvelope): void {
 
     case "situation.snapshot.ready": {
       const s = event.payload as unknown as SituationSnapshot;
-      cmd(lines, event, "synth", `snapshot v${s.version} généré (${s.radio_events.length} radio events intégrés)`);
+      cmd(lines, event, "synth", `snapshot v${s.version} generated (${s.radio_events.length} radio events folded in)`);
       for (const f of s.known_facts) out(lines, event, `⇒ ${f}`);
       for (const f of s.uncertain_facts) out(lines, event, `⚠ ${f}`);
-      for (const c of s.conflicts) out(lines, event, `✗ conflit: ${c}`);
-      for (const m of s.missing_information) out(lines, event, `⚠ manquant: ${m}`);
-      out(lines, event, `↳ provenance: ${s.provenance.length} champs tracés`);
+      for (const c of s.conflicts) out(lines, event, `✗ conflict: ${c}`);
+      for (const m of s.missing_information) out(lines, event, `⚠ missing: ${m}`);
+      out(lines, event, `↳ provenance: ${s.provenance.length} fields tracked`);
       break;
     }
 
     case "plan.draft.ready": {
       const plan = event.payload as unknown as DraftTacticalPlan;
-      cmd(lines, event, "plan", `plan ${plan.plan_id} v${plan.version} prêt`);
+      cmd(lines, event, "plan", `plan ${plan.plan_id} v${plan.version} ready`);
       out(lines, event, `↳ ${truncate(plan.summary)}`);
       for (const a of plan.unit_actions)
         out(lines, event, `⇒ ${a.unit_id} · ${a.action_type} — ${truncate(a.instruction, 90)}`);
       for (const r of plan.rejected_options ?? [])
-        out(lines, event, `✗ rejeté: ${r.option} — ${truncate(r.reason, 80)}`);
+        out(lines, event, `✗ rejected: ${r.option} — ${truncate(r.reason, 80)}`);
       for (const u of plan.uncertainties ?? []) out(lines, event, `⚠ ${u}`);
       break;
     }
     case "plan.revision.requested":
-      cmd(lines, event, "review", `révision demandée par ${String(p.requested_by ?? "?")} sur ${String(p.plan_id ?? "?")}`);
+      cmd(lines, event, "review", `revision requested by ${String(p.requested_by ?? "?")} on ${String(p.plan_id ?? "?")}`);
       out(lines, event, `✗ ${String(p.reason ?? "—")}`);
       break;
 
     case "safety_review.ready": {
       const r = event.payload as unknown as SafetyReview;
-      cmd(lines, event, "review", `revue ${r.review_id} → ${r.status} (plan ${r.plan_id})`);
+      cmd(lines, event, "review", `review ${r.review_id} → ${r.status} (plan ${r.plan_id})`);
       for (const o of r.critical_objections) out(lines, event, `✗ ${o}`);
-      for (const c of r.required_changes) out(lines, event, `⚠ requis: ${c}`);
+      for (const c of r.required_changes) out(lines, event, `⚠ required: ${c}`);
       for (const c of r.required_confirmations ?? [])
-        out(lines, event, `⚠ à confirmer terrain: ${c}`);
+        out(lines, event, `⚠ field confirmation needed: ${c}`);
       for (const check of r.rule_checks)
         out(
           lines,
           event,
           check.passed
-            ? `⇒ ${check.rule_id} conforme${check.detail ? ` — ${truncate(check.detail, 70)}` : ""}`
+            ? `⇒ ${check.rule_id} passed${check.detail ? ` — ${truncate(check.detail, 70)}` : ""}`
             : `✗ ${check.rule_id}${check.detail ? ` — ${truncate(check.detail, 70)}` : ""}`,
         );
       break;
     }
 
     case "approval.requested":
-      cmd(lines, event, "human", "validation commandant demandée");
-      out(lines, event, "⚠ diffusion verrouillée en attendant la décision humaine (invariant #1)");
+      cmd(lines, event, "human", "commander approval requested");
+      out(lines, event, "⚠ dispatch locked until the human decision (product invariant #1)");
       break;
     case "approval.received": {
       const d = event.payload as unknown as ApprovalDecision;
-      cmd(lines, event, "human", `décision: ${d.decision} — ${d.operator_name}`);
+      cmd(lines, event, "human", `decision: ${d.decision} — ${d.operator_name}`);
       out(
         lines,
         event,
         d.decision === "approve"
-          ? "⇒ plan approuvé — diffusion déverrouillée"
-          : `✗ plan non approuvé (${d.decision})`,
+          ? "⇒ plan approved — dispatch unlocked"
+          : `✗ plan not approved (${d.decision})`,
       );
-      if (d.operator_note) out(lines, event, `↳ note: « ${truncate(d.operator_note, 90)} »`);
+      if (d.operator_note) out(lines, event, `↳ note: "${truncate(d.operator_note, 90)}"`);
       break;
     }
 
     case "dispatch.instruction.ready": {
       const d = event.payload as unknown as DispatchInstruction;
       cmd(lines, event, "dispatch", `${d.dispatch_id} → ${d.unit_id} (${d.priority})`);
-      out(lines, event, `⇒ « ${truncate(d.message_text)} »`);
-      if (d.acknowledgement_required) out(lines, event, "↳ accusé de réception requis");
+      out(lines, event, `⇒ "${truncate(d.message_text)}"`);
+      if (d.acknowledgement_required) out(lines, event, "↳ acknowledgement required");
       break;
     }
     case "dispatch.sent":
-      cmd(lines, event, "dispatch", `${String(p.dispatch_id ?? "?")} transmis (diffusion simulée)`);
+      cmd(lines, event, "dispatch", `${String(p.dispatch_id ?? "?")} sent (simulated dispatch)`);
       break;
 
     case "tts.started":
@@ -560,7 +560,7 @@ function eventLines(lines: TermLine[], event: EventEnvelope): void {
         lines,
         event,
         "tts",
-        `synthèse ${String(p.dispatch_id ?? "?")}${p.engine ? ` — ${String(p.engine)}` : ""}${p.voice ? ` · ${String(p.voice)}` : ""}`,
+        `synthesizing ${String(p.dispatch_id ?? "?")}${p.engine ? ` — ${String(p.engine)}` : ""}${p.voice ? ` · ${String(p.voice)}` : ""}`,
       );
       break;
     case "tts.ready":
@@ -568,7 +568,7 @@ function eventLines(lines: TermLine[], event: EventEnvelope): void {
         lines,
         event,
         "tts",
-        `audio prêt ${String(p.dispatch_id ?? "?")}${typeof p.latency_ms === "number" ? ` · ${p.latency_ms} ms` : ""}`,
+        `audio ready ${String(p.dispatch_id ?? "?")}${typeof p.latency_ms === "number" ? ` · ${p.latency_ms} ms` : ""}`,
       );
       if (p.tts_audio_path) out(lines, event, `⇒ ${String(p.tts_audio_path)}`);
       break;

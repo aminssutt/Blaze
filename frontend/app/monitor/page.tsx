@@ -42,12 +42,12 @@ function IncidentStatusChip() {
   const pendingDecision = approvalRequested && !approval;
   const chip =
     incidentStatus === "waiting"
-      ? { label: "en attente", cls: "border-edge-strong text-faint", tone: "idle" as const, pulse: false }
+      ? { label: "standby", cls: "border-edge-strong text-faint", tone: "idle" as const, pulse: false }
       : incidentStatus === "completed"
-        ? { label: "terminé", cls: "border-ok/70 bg-ok-dim/50 text-ok", tone: "ok" as const, pulse: false }
+        ? { label: "completed", cls: "border-ok/70 bg-ok-dim/50 text-ok", tone: "ok" as const, pulse: false }
         : pendingDecision
-          ? { label: "décision attendue", cls: "border-accent bg-accent-dim/30 text-accent", tone: "warn" as const, pulse: true }
-          : { label: "incident actif", cls: "border-info/60 bg-info/10 text-info", tone: "running" as const, pulse: true };
+          ? { label: "decision pending", cls: "border-accent bg-accent-dim/30 text-accent", tone: "warn" as const, pulse: true }
+          : { label: "incident live", cls: "border-info/60 bg-info/10 text-info", tone: "running" as const, pulse: true };
   return (
     <span
       data-testid="monitor-status-chip"
@@ -84,19 +84,19 @@ export default function MonitorPage() {
             BLAZE
           </span>
           <span className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-faint md:inline">
-            monitor agents
+            agent monitor
           </span>
           <div className="min-w-0 border-l border-edge pl-3">
             <div
               className="truncate text-[13px] font-semibold text-foreground"
               title={state.incidentName ?? undefined}
             >
-              {state.incidentName ?? "en attente de incident.started"}
+              {state.incidentName ?? "awaiting incident.started"}
             </div>
             <div className="truncate font-mono text-[10px] text-faint">
               {state.incidentId ?? "—"}
               {state.lastSequence > 0 ? ` · seq ${state.lastSequence}` : ""}
-              {state.networkMode ? ` · réseau ${state.networkMode}` : ""}
+              {state.networkMode ? ` · network ${state.networkMode}` : ""}
             </div>
           </div>
         </div>
@@ -120,11 +120,11 @@ export default function MonitorPage() {
       {/* main row — pipeline graph + commander aside */}
       <main
         className="flex min-h-0 flex-col gap-2 xl:flex-1 xl:flex-row xl:overflow-hidden"
-        aria-label="Monitor du pipeline multi-agents"
+        aria-label="Multi-agent pipeline monitor"
       >
         {/* the living graph — every node is clickable */}
         <section
-          aria-label="Graphe du pipeline"
+          aria-label="Pipeline graph"
           className="min-h-[420px] overflow-hidden rounded-md border border-edge bg-background xl:h-auto xl:min-h-0 xl:flex-1"
         >
           <PipelineGraph
@@ -139,7 +139,7 @@ export default function MonitorPage() {
             Same amber commander identity as /expert, escalating while the
             decision is pending. */}
         <aside
-          aria-label="Poste commandant"
+          aria-label="Commander station"
           className={`flex w-full shrink-0 flex-col gap-2 rounded-md border p-1.5 xl:min-h-0 xl:w-[360px] ${
             decisionPending
               ? "blaze-cta-pulse border-accent bg-accent-dim/15"
@@ -148,10 +148,10 @@ export default function MonitorPage() {
         >
           <div className="flex min-w-0 shrink-0 items-baseline gap-1.5 rounded-sm border border-edge bg-surface px-2 py-1">
             <span className="whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
-              🎯 Poste commandant
+              🎯 Commander station
             </span>
             <span className="min-w-0 truncate font-mono text-[10px] text-faint">
-              — validation puis diffusion
+              — approval, then dispatch
             </span>
           </div>
           <ApprovalGate className="xl:flex-[2]" />

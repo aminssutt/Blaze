@@ -161,13 +161,13 @@ const STATUS_STYLE: Record<
   active: {
     card: "border-info bg-surface",
     text: "text-info",
-    label: "actif",
+    label: "working",
     glow: "0 0 30px -6px rgba(56,189,248,0.55)",
   },
   done: {
     card: "border-ok/60 bg-ok-dim/20",
     text: "text-ok",
-    label: "terminé",
+    label: "done",
     glow: "0 0 18px -8px rgba(34,197,94,0.45)",
   },
 };
@@ -211,7 +211,7 @@ function NodeCardContent({
   const isGate = id === "human_gate";
   const style = STATUS_STYLE[status];
   const gateActive = isGate && status === "active";
-  const statusText = gateActive ? "décision attendue" : style.label;
+  const statusText = gateActive ? "decision pending" : style.label;
   const statusCls = gateActive ? "text-accent" : style.text;
   return (
     <>
@@ -226,9 +226,9 @@ function NodeCardContent({
         </span>
         <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-faint">
           {info.kind === "agent"
-            ? "agent gemma"
+            ? "gemma agent"
             : info.kind === "human"
-              ? "humain dans la boucle"
+              ? "human-in-the-loop"
               : "service"}
         </span>
         <span
@@ -295,19 +295,19 @@ export default function PipelineGraph({
               className="pointer-events-none absolute font-mono text-[11px] uppercase tracking-[0.18em] text-faint"
               style={{ left: RECT.ingestion.x, top: ROW1_Y - 26 }}
             >
-              Acquisition · le terrain devient des faits
+              Acquisition · the field becomes facts
             </span>
             <span
               className="pointer-events-none absolute font-mono text-[11px] uppercase tracking-[0.18em] text-faint"
               style={{ left: RECT.tactical_planning.x, top: ROW2_Y - 26 }}
             >
-              Décision · du plan à la diffusion
+              Decision · from plan to dispatch
             </span>
             <span
               className="pointer-events-none absolute font-mono text-[10px] uppercase tracking-[0.18em] text-faint"
               style={{ left: TOOL_X, top: TOOL_Y0 - 22 }}
             >
-              Outils allowlistés
+              Allowlisted tools
             </span>
 
             <svg
@@ -387,7 +387,7 @@ export default function PipelineGraph({
                     fontFamily="var(--blaze-font-mono)"
                     textAnchor="middle"
                   >
-                    révision demandée
+                    revision requested
                   </text>
                 </g>
               )}
@@ -472,7 +472,7 @@ export default function PipelineGraph({
                   key={id}
                   type="button"
                   onClick={() => onSelect(isSelected ? null : id)}
-                  title={`outil ${tool.name}`}
+                  title={`${tool.name} tool`}
                   className={[
                     "absolute flex cursor-pointer items-center gap-2 rounded-sm border px-2 text-left",
                     style.card,
