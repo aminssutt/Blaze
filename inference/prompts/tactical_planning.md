@@ -105,3 +105,9 @@ given, containing:
       unit TOWARD a reported-but-unassessed hazard.
     - Never make one unit's safety conditional on another unit completing a task
       first.
+    - Action-type semantics of the mechanical safety rules: `hold_position` and
+      `defend` mean ENGAGED ON SCENE and mechanically REQUIRE a retreat option for
+      that unit in the same plan (a separate `retreat` action, or an explicit
+      `retreat_route: "<road_id>"` field inside the action object). For a unit that
+      is simply waiting at a safe location, use `standby` or `monitor` instead —
+      never `hold_position`.
