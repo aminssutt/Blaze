@@ -47,7 +47,7 @@ import {
 } from "@/lib/session";
 import { isLiveMode } from "@/lib/streamMode";
 import { postApprovalDecision } from "@/lib/backendApi";
-import { Badge, safetyLabel, safetyVariant, urgencyVariant } from "@/components/ui";
+import { AudioPlayer, Badge, safetyLabel, safetyVariant, urgencyVariant } from "@/components/ui";
 
 /* -------------------------------------------------------------------------- */
 /* Derivation helpers                                                         */
@@ -96,7 +96,7 @@ interface StepDef {
 
 /** The 8 chapters of the story, in pipeline order (ticket #110). */
 const STEPS: StepDef[] = [
-  { id: "radio", icon: "📻", title: "Audios radio", activity: ["audio.received"] },
+  { id: "radio", icon: "📻", title: "Radio audio", activity: ["audio.received"] },
   {
     id: "transcription",
     icon: "📝",
@@ -106,13 +106,13 @@ const STEPS: StepDef[] = [
   {
     id: "radio-agent",
     icon: "🤖",
-    title: "Agent Radio",
+    title: "Radio agent",
     activity: ["radio_agent.started", "radio_event.extracted"],
   },
   {
     id: "context",
     icon: "🌍",
-    title: "Contexte terrain",
+    title: "Field context",
     activity: [
       "context_agent.started",
       "tool.call.requested",
@@ -123,7 +123,7 @@ const STEPS: StepDef[] = [
   {
     id: "plan",
     icon: "🗺️",
-    title: "Plan tactique",
+    title: "Tactical plan",
     activity: ["planning.started", "plan.draft.ready", "plan.revision.requested"],
   },
   {
@@ -135,13 +135,13 @@ const STEPS: StepDef[] = [
   {
     id: "approval",
     icon: "👤",
-    title: "Validation humaine",
+    title: "Human approval",
     activity: ["approval.requested", "approval.received"],
   },
   {
     id: "dispatch",
     icon: "📢",
-    title: "Dispatch vocal",
+    title: "Voice dispatch",
     activity: [
       "dispatch.started",
       "dispatch.instruction.ready",
@@ -241,7 +241,7 @@ function SkipArea({
       type="button"
       onClick={skip}
       disabled={done}
-      aria-label="Afficher le texte complet immédiatement"
+      aria-label="Show the full text immediately"
       title={done ? undefined : "Cliquer pour tout afficher"}
       className="block w-full cursor-text text-left disabled:cursor-auto"
     >
@@ -390,20 +390,17 @@ function DispatchAudio({
         « {dispatch.message_text} »
       </p>
       {ready && !failed ? (
-        <audio
-          controls
-          preload="none"
-          src={src}
+        <AudioPlayer
+          src={src as string}
           onError={() => setFailed(true)}
-          className="mt-1.5 h-8 w-full"
-          aria-label={`Message audio TTS pour ${dispatch.unit_id}`}
+          className="mt-1.5"
+          ariaLabel={`TTS voice message for ${dispatch.unit_id}`}
         />
       ) : (
         (failed || (tts?.status === "ready" && !src)) && (
-          <div className="mt-1.5 flex items-center gap-1.5">
-            <audio controls className="h-8 w-full opacity-30" aria-hidden="true" />
-            <Badge variant="warn" title={src ?? "pas de fichier TTS"}>
-              audio indisponible — texte seul
+          <div className="mt-1.5">
+            <Badge variant="warn" title={src ?? "no TTS file"}>
+              audio unavailable — text only
             </Badge>
           </div>
         )
@@ -465,8 +462,17 @@ function StepCard({
         transition={active ? { duration: 1.4, repeat: Infinity } : { duration: 0.3 }}
         aria-hidden="true"
       >
-        <span className={status === "pending" ? "opacity-40 grayscale" : ""}>
-          {step.icon}
+        <span
+          className={`font-mono text-[14px] font-bold ${status === "pending" ? "opacity-50" : ""}`}
+          style={{
+            color: active
+              ? "var(--blaze-accent)"
+              : status === "done"
+                ? "var(--blaze-text)"
+                : "var(--blaze-text-muted)",
+          }}
+        >
+          {String(index + 1).padStart(2, "0")}
         </span>
       </motion.div>
 
@@ -518,7 +524,7 @@ function StepCard({
             {step.title}
           </h2>
           {status === "done" && produced && !badge && (
-            <span className="font-mono text-[11px] text-ok" aria-label="terminé">
+            <span className="font-mono text-[11px] text-ok" aria-label="done">
               ✓
             </span>
           )}
@@ -655,7 +661,7 @@ export default function DemoPage() {
               transition={{ delay: 0.15 }}
               className="max-w-xl text-balance text-[15px] leading-relaxed text-muted"
             >
-              Du trafic radio des pompiers à l’ordre vocal validé — transcription,
+              From firefighter radio traffic to an approved voice order — transcription,
               agents Gemma, plan tactique, critique sécurité et dispatch,
               entièrement en local.
             </motion.p>
@@ -694,7 +700,7 @@ export default function DemoPage() {
               transition={{ delay: 0.3 }}
               className="flex items-center gap-4 font-mono text-[12px] text-faint"
             >
-              <Badge variant="ok" filled title="Aucun appel LLM cloud — inférence 100 % locale">
+              <Badge variant="ok" filled title="No cloud LLM calls — 100% local inference">
                 Cloud LLM calls: 0
               </Badge>
               <Link href="/expert" className="underline-offset-4 hover:text-muted hover:underline">
@@ -716,11 +722,11 @@ export default function DemoPage() {
                 BLAZE
               </span>
               <span className="truncate font-mono text-[12px] text-muted">
-                {state.incidentName ?? "démo guidée"}
+                {state.incidentName ?? "guided demo"}
               </span>
               {state.incidentStatus === "completed" && (
                 <Badge variant="ok" filled className="ml-auto">
-                  incident terminé
+                  incident completed
                 </Badge>
               )}
             </header>
@@ -739,7 +745,7 @@ export default function DemoPage() {
                         reverse={isReturnConnector}
                         label={
                           isReturnConnector
-                            ? "révision demandée → plan v2"
+                            ? "revision requested → plan v2"
                             : undefined
                         }
                       />
@@ -779,7 +785,7 @@ export default function DemoPage() {
                                 {lastAudio.audio_mode && ` · ${lastAudio.audio_mode}`}
                               </Line>
                               <FaintLine>
-                                dernier message : {lastAudio.audio_id}
+                                last message: {lastAudio.audio_id}
                               </FaintLine>
                             </>
                           ) : (
@@ -908,7 +914,7 @@ export default function DemoPage() {
                             <PlanTypewriter plan={state.plan} />
                           ) : (
                             <FaintLine>
-                              l’agent de planification attend le contexte…
+                              the planning agent is waiting for context…
                             </FaintLine>
                           )}
                         </StepCard>
@@ -957,7 +963,7 @@ export default function DemoPage() {
                             </>
                           ) : (
                             <FaintLine>
-                              le critique de sécurité attend un plan…
+                              the safety critic is waiting for a plan…
                             </FaintLine>
                           )}
                         </StepCard>
@@ -972,7 +978,7 @@ export default function DemoPage() {
                           badge={
                             <Badge
                               variant={approvalPending ? "accent" : "neutral"}
-                              title="Rien n'est diffusé sans décision humaine — l'argument signature de BLAZE"
+                              title="Nothing is dispatched without a human decision — BLAZE's signature guarantee"
                             >
                               human veto
                             </Badge>
@@ -998,7 +1004,7 @@ export default function DemoPage() {
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.96 }}
                                 className="ml-auto rounded-md border border-ok bg-ok-dim/60 px-5 py-2 font-mono text-[13px] font-bold uppercase tracking-wider text-ok hover:bg-ok-dim disabled:cursor-not-allowed disabled:opacity-40"
-                                title="Valide le plan v2 et déclenche la diffusion (invariant produit #1)"
+                                title="Approves plan v2 and unlocks dispatch (product invariant #1)"
                               >
                                 ✓ Approve
                               </motion.button>
@@ -1114,7 +1120,7 @@ export default function DemoPage() {
               type="button"
               onClick={restart}
               className="rounded-sm border border-edge px-2 py-0.5 hover:border-edge-strong"
-              title="Revenir à l’écran de lancement"
+              title="Back to the launch screen"
             >
               ↺
             </button>
@@ -1137,7 +1143,7 @@ export default function DemoPage() {
             <Badge
               variant="ok"
               filled
-              title="Aucun appel LLM cloud — toute l’inférence est locale"
+              title="No cloud LLM calls — all inference is local"
             >
               Cloud LLM calls: {cloudCalls}
             </Badge>

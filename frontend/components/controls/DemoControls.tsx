@@ -86,7 +86,7 @@ export default function DemoControls() {
         className={`${BUTTON} border-accent-dim font-semibold text-accent hover:border-accent`}
         title="Démarre (ou reprend) le déroulé de l'incident"
       >
-        ▶ démarrer
+        ▶ start
       </button>
       <button
         type="button"
@@ -109,7 +109,7 @@ export default function DemoControls() {
         }`}
         title="Coupure réseau simulée — bascule network.mode.changed (API réelle au ticket #54)"
       >
-        {offline ? "⚡ réseau coupé" : "⚡ couper le réseau"}
+        {offline ? "⚡ network down" : "⚡ cut the network"}
       </button>
 
       <button
@@ -119,17 +119,17 @@ export default function DemoControls() {
         className={`${BUTTON} border-edge text-muted hover:border-edge-strong`}
         title="Variante audio demandée pour le prochain run réel (#54) — le replay mock reste en radio"
       >
-        ♪ prochain run : {nextAudio}
+        ♪ next run: {nextAudio}
       </button>
 
       <Chip
-        label="événements"
+        label="events"
         value={`${state.eventsReceived}`}
         tone={state.eventsReceived > 0 ? "accent" : "neutral"}
         title="Nombre d'événements réduits par le store"
       />
       <Chip
-        label="réseau"
+        label="network"
         value={state.networkMode ?? "—"}
         tone={state.networkMode === "online" ? "ok" : state.networkMode ? "alert" : "neutral"}
         title="network_mode courant"
@@ -140,7 +140,7 @@ export default function DemoControls() {
         title="audio_mode courant du flux"
       />
       <Chip
-        label="repli/err"
+        label="fallback/err"
         value={`${state.fallbackCount}/${state.errorCount}`}
         tone={state.errorCount > 0 ? "alert" : state.fallbackCount > 0 ? "warn" : "neutral"}
         title="fallback.activated / error"

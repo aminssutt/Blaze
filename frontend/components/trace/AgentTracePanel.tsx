@@ -163,7 +163,7 @@ export default function AgentTracePanel({ className }: PanelComponentProps) {
     <Panel
       className={className}
       id="agent-trace"
-      title="Trace agents & outils"
+      title="Agent & tool trace"
       subtitle={
         agentRuns.length > 0 || toolCalls.length > 0
           ? `${agentRuns.length} exécutions · ${completed}/${toolCalls.length} outils · ${cached} en cache`

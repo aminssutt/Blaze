@@ -17,7 +17,7 @@ export default function SituationSnapshotPanel({ className }: PanelComponentProp
     <Panel
       className={className}
       id="situation-snapshot"
-      title="Synthèse de situation"
+      title="Situation summary"
       subtitle={snapshot ? `version ${snapshot.version}` : undefined}
       right={
         snapshot ? (

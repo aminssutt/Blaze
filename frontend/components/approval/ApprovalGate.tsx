@@ -84,7 +84,7 @@ export default function ApprovalGate({ className }: PanelComponentProps) {
     <Panel
       className={className}
       id="approval-gate"
-      title="Validation commandant"
+      title="Commander approval"
       subtitle={plan ? `plan ${plan.plan_id} · v${plan.version}` : undefined}
       right={
         <Badge
@@ -92,14 +92,14 @@ export default function ApprovalGate({ className }: PanelComponentProps) {
           filled
           title="Invariant produit #1 — la diffusion reste inerte sans validation humaine"
         >
-          {dispatchUnlocked ? "diffusion déverrouillée" : "diffusion verrouillée"}
+          {dispatchUnlocked ? "diffusion déverrouillée" : "dispatch locked"}
         </Badge>
       }
       live={approvalRequested}
       tone={approvalRequested ? "accent" : dispatchUnlocked ? "ok" : "default"}
       empty={!approvalRequested && !approval}
-      emptyLabel="aucune validation demandée…"
-      emptyHint="vérification et envoi du plan — dès que la revue de sécurité est passée"
+      emptyLabel="no approval requested yet…"
+      emptyHint="review and send the plan — as soon as the safety review passes"
     >
       <div className="flex flex-col gap-2">
         {decisionPending && (

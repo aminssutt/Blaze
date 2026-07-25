@@ -298,7 +298,7 @@ export default function SafetyCriticPanel({ className }: PanelComponentProps) {
     <Panel
       className={className}
       id="safety-critic"
-      title="Critique sécurité"
+      title="Safety critic"
       live={reviewing}
       subtitle={
         safetyReviews.length > 0
@@ -322,8 +322,8 @@ export default function SafetyCriticPanel({ className }: PanelComponentProps) {
             : "default"
       }
       empty={safetyReviews.length === 0 && !reviewing}
-      emptyLabel="aucune revue…"
-      emptyHint="contrôle de sécurité du plan proposé — avant la demande de validation"
+      emptyLabel="no review yet…"
+      emptyHint="safety check of the proposed plan — before approval is requested"
     >
       <div className="flex flex-col gap-2">
         <HeroStatus

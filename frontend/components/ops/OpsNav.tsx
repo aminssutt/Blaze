@@ -12,9 +12,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const TABS = [
-  { href: "/simple", label: "Essentiel", title: "L'essentiel, pour tous" },
-  { href: "/expert", label: "Intervention", title: "Salle de commandement" },
-  { href: "/system", label: "Système", title: "État du matériel et de l'IA" },
+  { href: "/simple", label: "Essentials", title: "The essentials, for everyone" },
+  { href: "/expert", label: "Intervention", title: "The chief's control room" },
+  { href: "/system", label: "System", title: "Machine and AI health" },
 ] as const;
 
 export default function OpsNav() {
@@ -22,14 +22,14 @@ export default function OpsNav() {
 
   return (
     <nav
-      aria-label="Vues opérateur"
-      className="flex shrink-0 items-center gap-1 rounded-md border border-edge bg-surface px-2 py-1"
+      aria-label="Operator views"
+      className="flex shrink-0 items-center gap-1 rounded-full border border-edge bg-surface px-3 py-1.5"
     >
       <Link
         href="/"
         className="mr-2 flex items-center gap-1.5 px-1 font-mono text-[12px] font-bold tracking-[0.2em]"
         style={{ color: "var(--blaze-accent)" }}
-        title="Accueil BLAZE"
+        title="BLAZE home"
       >
         BLAZE<span aria-hidden>▲</span>
       </Link>
@@ -43,7 +43,7 @@ export default function OpsNav() {
               href={tab.href}
               title={tab.title}
               aria-current={active ? "page" : undefined}
-              className={`rounded-sm border px-3 py-1 font-mono text-[11px] uppercase tracking-[0.16em] transition-colors ${
+              className={`rounded-full border px-3.5 py-1 text-[12px] font-medium transition-colors ${
                 active
                   ? "border-accent bg-accent-dim/20"
                   : "border-transparent hover:border-edge-strong"
@@ -60,10 +60,10 @@ export default function OpsNav() {
 
       <Link
         href="/demo"
-        className="ml-auto px-1 font-mono text-[10px] uppercase tracking-[0.16em] hover:underline"
+        className="ml-auto px-1 text-[11px] hover:underline"
         style={{ color: "var(--blaze-text-faint)" }}
       >
-        démo guidée →
+        guided demo →
       </Link>
     </nav>
   );

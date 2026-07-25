@@ -15,7 +15,7 @@
 
 import type { AudioProgress, AudioStatus } from "@/lib/incidentStore";
 import { useIncidentState } from "@/lib/session";
-import { Badge, Panel, SourceBadge, StatusDot } from "@/components/ui";
+import { AudioPlayer, Badge, Panel, SourceBadge, StatusDot } from "@/components/ui";
 import type { PanelComponentProps, StatusTone } from "@/components/ui";
 
 /* -------------------------------------------------------------------------- */
@@ -36,7 +36,7 @@ function scenarioTime(seconds: number): string {
 
 /**
  * The ticket-#42 pipeline reading of one audio: the store's monotonic
- * `AudioStatus` plus a final "extrait" stage once radio_event.extracted
+ * `AudioStatus` plus a final "extracted" stage once radio_event.extracted
  * attached at least one structured event to this audio.
  */
 type PipelineStage = AudioStatus | "extracted";
@@ -57,11 +57,11 @@ const STAGE_ORDER: Record<PipelineStage, number> = {
 };
 
 const STAGE_LABEL: Record<PipelineStage, string> = {
-  pending: "annoncé",
-  received: "reçu",
-  transcribing: "transcription…",
-  transcribed: "transcrit",
-  extracted: "extrait",
+  pending: "announced",
+  received: "received",
+  transcribing: "transcribing…",
+  transcribed: "transcribed",
+  extracted: "extracted",
 };
 
 const STAGE_BADGE: Record<PipelineStage, "neutral" | "info" | "ok"> = {
@@ -83,9 +83,9 @@ const STAGE_DOT: Record<PipelineStage, StatusTone> = {
 /** The 3 steps of the visible processing stepper, in pipeline order. */
 const STEPS: { label: string; reached: PipelineStage; active: PipelineStage }[] =
   [
-    { label: "reçu", reached: "received", active: "received" },
-    { label: "transcription", reached: "transcribing", active: "transcribing" },
-    { label: "extrait", reached: "extracted", active: "transcribed" },
+    { label: "received", reached: "received", active: "received" },
+    { label: "transcribing", reached: "transcribing", active: "transcribing" },
+    { label: "extracted", reached: "extracted", active: "transcribed" },
   ];
 
 /** Compact reçu → transcription → extrait stepper for one audio. */
@@ -94,7 +94,7 @@ function ProcessingSteps({ stage }: { stage: PipelineStage }) {
   return (
     <ol
       className="flex items-center gap-1"
-      aria-label={`traitement : ${STAGE_LABEL[stage]}`}
+      aria-label={`processing: ${STAGE_LABEL[stage]}`}
     >
       {STEPS.map((step, i) => {
         const reached = rank >= STAGE_ORDER[step.reached];
@@ -134,16 +134,16 @@ export default function RadioTimeline({ className }: PanelComponentProps) {
     <Panel
       className={className}
       id="radio-timeline"
-      title="Fil radio"
+      title="Radio feed"
       subtitle={
         audios.length > 0
-          ? `${transcribed}/${audios.length} transcrits`
+          ? `${transcribed}/${audios.length} transcribed`
           : undefined
       }
       live={audios.some((a) => a.status === "transcribing")}
       empty={audios.length === 0}
-      emptyLabel="aucun message radio…"
-      emptyHint="audios du terrain + transcriptions — dès le premier message reçu"
+      emptyLabel="no radio message yet…"
+      emptyHint="field audio + transcripts — from the first message received"
     >
       <ol className="flex flex-col gap-1.5">
         {audios.map((audio) => {
@@ -165,7 +165,7 @@ export default function RadioTimeline({ className }: PanelComponentProps) {
                 {audio.scenario_timestamp !== null && (
                   <span
                     className="font-mono text-[10px] text-faint"
-                    title="temps scénario (offset depuis le début de l'incident)"
+                    title="scenario time (offset from incident start)"
                   >
                     {scenarioTime(audio.scenario_timestamp)}
                   </span>
@@ -179,7 +179,7 @@ export default function RadioTimeline({ className }: PanelComponentProps) {
                       variant={audio.audio_mode === "radio" ? "warn" : "neutral"}
                       title={`audio_variant : ${audio.audio_mode}`}
                     >
-                      {audio.audio_mode === "radio" ? "radio dégradé" : "clean"}
+                      {audio.audio_mode === "radio" ? "degraded radio" : "clean"}
                     </Badge>
                   )}
                   <Badge variant={STAGE_BADGE[stage]} title={stage}>
@@ -190,12 +190,10 @@ export default function RadioTimeline({ className }: PanelComponentProps) {
 
               {/* real WAV, served from /data/audio/ (sync-data.mjs) */}
               {audio.audio_path && (
-                <audio
-                  controls
-                  preload="none"
+                <AudioPlayer
                   src={audioUrl(audio.audio_path)}
-                  className="mt-1.5 h-8 w-full"
-                  aria-label={`audio ${audio.audio_id} — ${audio.speaker_hint ?? "unité inconnue"}`}
+                  className="mt-1.5"
+                  ariaLabel={`audio ${audio.audio_id} — ${audio.speaker_hint ?? "unknown unit"}`}
                 />
               )}
 

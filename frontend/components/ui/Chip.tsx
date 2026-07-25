@@ -35,7 +35,7 @@ export default function Chip({
   return (
     <span
       title={title}
-      className={`inline-flex items-baseline gap-1 whitespace-nowrap rounded-sm border border-edge bg-overlay px-1.5 py-px font-mono text-[10px] leading-4 ${className}`}
+      className={`inline-flex items-baseline gap-1 whitespace-nowrap rounded-full border border-edge bg-overlay px-2 py-px font-mono text-[10px] leading-4 ${className}`}
     >
       <span className="text-faint">{label}</span>
       <span className={TONE_VALUE[tone]}>{value}</span>

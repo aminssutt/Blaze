@@ -58,9 +58,9 @@ export default function Panel({
   return (
     <section
       id={id}
-      className={`flex min-h-0 min-w-0 flex-col overflow-hidden rounded-md border bg-surface ${TONE_BORDER[tone]} ${className}`}
+      className={`flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border bg-surface ${TONE_BORDER[tone]} ${className}`}
     >
-      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-edge px-3 py-1.5">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-edge px-3.5 py-2">
         <div className="flex min-w-0 items-center gap-2">
           {live && (
             <span
@@ -69,7 +69,7 @@ export default function Panel({
             />
           )}
           <div className="min-w-0">
-            <h2 className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+            <h2 className="truncate text-[13px] font-semibold text-foreground">
               {title}
             </h2>
             {subtitle !== undefined && subtitle !== null && (

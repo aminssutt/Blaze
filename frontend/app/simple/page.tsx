@@ -35,10 +35,10 @@ const TONE_COLOR: Record<StepTone, string> = {
 };
 
 const TONE_LABEL: Record<StepTone, string> = {
-  done: "fait",
-  active: "en cours",
-  waiting: "en attente",
-  blocked: "bloqué",
+  done: "done",
+  active: "running",
+  waiting: "waiting",
+  blocked: "blocked",
 };
 
 /** The five pipeline stages, derived from real stream state — nothing invented. */
@@ -54,44 +54,44 @@ function deriveSteps(s: IncidentState): Step[] {
 
   return [
     {
-      title: "Écoute radio",
-      plain: "Les messages radio sont transcrits et compris.",
+      title: "Radio listening",
+      plain: "Radio messages are transcribed and understood.",
       tone: s.radioEvents.length > 0 ? "done" : s.transcripts.length > 0 ? "active" : "waiting",
       fact:
         s.radioEvents.length > 0
-          ? `${s.transcripts.length} message(s) · ${s.radioEvents.length} fait(s) extraits`
+          ? `${s.transcripts.length} message(s) · ${s.radioEvents.length} fact(s) extracted`
           : null,
     },
     {
-      title: "Analyse du terrain",
-      plain: "Météo, routes, bâtiments et points d'eau sont vérifiés.",
+      title: "Field analysis",
+      plain: "Weather, roads, buildings and water points are checked.",
       tone: s.snapshot ? "done" : s.toolCalls.length > 0 ? "active" : "waiting",
-      fact: s.toolCalls.length > 0 ? `${s.toolCalls.length} vérification(s) terrain` : null,
+      fact: s.toolCalls.length > 0 ? `${s.toolCalls.length} field check(s)` : null,
     },
     {
-      title: "Plan d'action",
-      plain: "Un plan est proposé pour chaque équipe.",
+      title: "Action plan",
+      plain: "A plan is proposed for every crew.",
       tone: s.plan ? "done" : "waiting",
       fact: s.plan ? `version ${s.plan.version} — ${s.plan.summary}` : null,
     },
     {
-      title: "Contrôle de sécurité",
-      plain: "Le plan est attaqué point par point avant tout envoi.",
+      title: "Safety check",
+      plain: "The plan is challenged point by point before anything is sent.",
       tone: safetyTone,
       fact:
         s.safetyReview == null
           ? null
           : s.safetyReview.status === "pass"
-            ? "aucun risque bloquant"
+            ? "no blocking risk"
             : s.safetyReview.status === "revise"
-              ? "révision demandée"
-              : "plan bloqué",
+              ? "revision requested"
+              : "plan blocked",
     },
     {
-      title: "Ordres aux équipes",
-      plain: "Chaque équipe reçoit son message vocal personnalisé.",
+      title: "Orders to the crews",
+      plain: "Every crew receives its own voice message.",
       tone: s.dispatchesSent > 0 ? "done" : s.dispatchUnlocked ? "active" : "waiting",
-      fact: s.dispatchesSent > 0 ? `${s.dispatchesSent} message(s) envoyé(s)` : null,
+      fact: s.dispatchesSent > 0 ? `${s.dispatchesSent} order(s) sent` : null,
     },
   ];
 }
@@ -100,37 +100,37 @@ function ApprovalBanner({ s }: { s: IncidentState }) {
   if (s.approval?.decision === "approve") {
     return (
       <div
-        className="rounded-md border px-4 py-3 text-lg font-semibold"
+        className="rounded-2xl border px-4 py-3 text-lg font-semibold"
         style={{
           borderColor: "var(--blaze-ok)",
           background: "var(--blaze-ok-dim)",
           color: "var(--blaze-ok)",
         }}
       >
-        ✓ Plan validé par {s.approval.operator_name}
+        ✓ Plan approved by {s.approval.operator_name}
       </div>
     );
   }
   if (s.approvalRequested && !s.approval) {
     return (
       <div
-        className="blaze-cta-pulse rounded-md border px-4 py-3 text-lg font-semibold"
+        className="blaze-cta-pulse rounded-2xl border px-4 py-3 text-lg font-semibold"
         style={{
           borderColor: "var(--blaze-accent)",
           background: "var(--blaze-accent-dim)",
           color: "var(--blaze-accent)",
         }}
       >
-        ⏳ En attente de la validation du commandant — rien ne part sans lui.
+        Waiting for the commander&apos;s approval — nothing goes out without it.
       </div>
     );
   }
   return (
     <div
-      className="rounded-md border border-edge px-4 py-3 text-lg"
+      className="rounded-2xl border border-edge px-4 py-3 text-lg"
       style={{ color: "var(--blaze-text-faint)" }}
     >
-      Pas encore de plan à valider.
+      No plan to approve yet.
     </div>
   );
 }
@@ -146,16 +146,16 @@ export default function SimpleView() {
   const steps = deriveSteps(state);
   const statusLabel =
     state.incidentStatus === "active"
-      ? "intervention en cours"
+      ? "incident in progress"
       : state.incidentStatus === "completed"
-        ? "intervention terminée"
-        : "en attente de départ";
+        ? "incident completed"
+        : "waiting to start";
 
   return (
     <div className="mx-auto flex min-h-screen max-w-4xl flex-col gap-3 p-3">
       <OpsNav />
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-edge bg-surface px-3 py-1.5">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-full border border-edge bg-surface px-4 py-1.5">
         <div className="ml-auto flex items-center gap-3">
           <StreamModeToggle />
           <PlayerBar />
@@ -165,14 +165,14 @@ export default function SimpleView() {
       {/* Incident, in one line anyone can read */}
       <header className="mt-2">
         <p
-          className="font-mono text-[11px] uppercase tracking-[0.2em]"
+          className="text-[11px] font-medium"
           style={{ color: "var(--blaze-text-faint)" }}
         >
           {statusLabel}
-          {state.networkMode ? ` · ${state.networkMode === "offline" ? "hors ligne — tout tourne sur place" : "en ligne"}` : ""}
+          {state.networkMode ? ` · ${state.networkMode === "offline" ? "offline — everything runs on site" : "online"}` : ""}
         </p>
         <h1 className="mt-1 text-2xl font-bold" style={{ color: "var(--blaze-text)" }}>
-          {state.incidentName ?? "Aucun incident en cours"}
+          {state.incidentName ?? "No incident in progress"}
         </h1>
       </header>
 
@@ -183,7 +183,7 @@ export default function SimpleView() {
         {steps.map((step, i) => (
           <li
             key={step.title}
-            className="flex items-start gap-4 rounded-md border border-edge bg-surface px-4 py-3"
+            className="flex items-start gap-4 rounded-2xl border border-edge bg-surface px-4 py-3.5"
           >
             <span
               className="mt-0.5 font-mono text-[13px] font-bold"
@@ -198,7 +198,7 @@ export default function SimpleView() {
                   {step.title}
                 </h2>
                 <span
-                  className="font-mono text-[10px] uppercase tracking-[0.16em]"
+                  className="text-[11px] font-medium"
                   style={{ color: TONE_COLOR[step.tone] }}
                 >
                   {TONE_LABEL[step.tone]}
@@ -222,30 +222,30 @@ export default function SimpleView() {
         <section aria-labelledby="orders-title" className="mt-1">
           <h2
             id="orders-title"
-            className="font-mono text-[11px] uppercase tracking-[0.2em]"
+            className="text-[12px] font-semibold"
             style={{ color: "var(--blaze-text-faint)" }}
           >
-            {"// ordres envoyés"}
+            {"Orders sent"}
           </h2>
           <ul className="mt-2 flex flex-col gap-2">
             {state.dispatches.map((d) => (
               <li
                 key={d.dispatch_id}
-                className="rounded-md border border-edge bg-surface px-4 py-3"
+                className="rounded-2xl border border-edge bg-surface px-4 py-3"
               >
                 <div className="flex items-baseline gap-3">
                   <span
-                    className="font-mono text-[13px] font-bold uppercase tracking-[0.1em]"
+                    className="text-[13px] font-bold"
                     style={{ color: "var(--blaze-accent)" }}
                   >
                     {d.unit_id}
                   </span>
                   {d.acknowledgement_required && (
                     <span
-                      className="font-mono text-[10px] uppercase tracking-[0.14em]"
+                      className="text-[11px]"
                       style={{ color: "var(--blaze-warn)" }}
                     >
-                      accusé de réception demandé
+                      acknowledgement required
                     </span>
                   )}
                 </div>
