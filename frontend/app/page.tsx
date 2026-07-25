@@ -56,7 +56,13 @@ export default function Home() {
   }, [controls]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden p-2 xl:h-screen xl:overflow-hidden">
+    // `xl:flex-none` is load-bearing, do not drop it: this div is a flex item of
+    // <body>, whose height is indefinite (`min-h-full`). With `flex-1` the basis
+    // is `0%`, a percentage against an indefinite main size, which CSS resolves
+    // to `content` — so `xl:h-screen` is ignored, the div grows to its content
+    // and the whole page scrolls once real scenario data arrives. `flex-none`
+    // restores `flex-basis: auto`, letting the 100vh height actually apply.
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden p-2 xl:h-screen xl:flex-none xl:overflow-hidden">
       {/* region 1 */}
       <HeaderBar />
 

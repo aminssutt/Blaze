@@ -7,6 +7,7 @@
     "sync-data": "node scripts/sync-data.mjs",
     "sync-fixtures": "npm run sync-mocks && npm run sync-data",
     "verify-store": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-store.mjs",
+    "verify-viewport": "node scripts/check-viewport.mjs",
     "predev": "npm run sync-fixtures",
     "dev": "next dev",
     "prebuild": "npm run sync-fixtures",
