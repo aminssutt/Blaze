@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     # Model and inference
     gemma_model_id: str = ""
+    hf_token: str = ""
     vllm_base_url: str = "http://localhost:8000"
     vllm_api_key: str = "local-only-placeholder"
 

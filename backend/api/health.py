@@ -1,6 +1,12 @@
-"""Health endpoint with per-component reachability sub-checks."""
+"""Health endpoint with per-component reachability sub-checks.
+
+Every sub-check is best-effort: a missing dependency or an unreachable
+service can never make /health fail — degraded components are reported
+in the payload and the endpoint always answers 200.
+"""
 
 import importlib.util
+import shutil
 
 import httpx
 from fastapi import APIRouter
@@ -9,7 +15,7 @@ from backend.api.config import get_settings
 
 router = APIRouter()
 
-CHECK_TIMEOUT_S = 1.5
+CHECK_TIMEOUT_S = 2.0
 
 
 async def _check_vllm(base_url: str) -> dict:
@@ -30,6 +36,8 @@ def _check_stt() -> dict:
 
 
 def _check_tts(settings) -> dict:
+    if shutil.which("piper") is None:
+        return {"status": "not_installed", "detail": "piper binary not on PATH"}
     if not settings.piper_voice_path:
         return {"status": "not_configured", "detail": "PIPER_VOICE_PATH empty"}
     voice = settings.resolve_path(settings.piper_voice_path)
