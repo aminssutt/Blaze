@@ -1,0 +1,3 @@
+# Scoped to tools/routing — stdlib + pydantic only, pytest for tests.
+pydantic>=2.5,<3
+pytest>=8.0
