@@ -6,6 +6,8 @@ or:
     python -m backend.api.main
 """
 
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -22,7 +24,9 @@ def create_app() -> FastAPI:
     app = FastAPI(title="BLAZE backend", version="0.1.0")
     app.state.event_bus = EventBus(incident_id=settings.scenario_id)
     app.state.demo = DemoController(app.state.event_bus)
-    app.state.demo.network_mode = settings.network_mode
+    # Runtime env wins over the (lru-cached) .env settings: the offline toggle
+    # writes NETWORK_MODE to the process env for the tool adapters.
+    app.state.demo.network_mode = os.environ.get("NETWORK_MODE", settings.network_mode)
     app.state.plans = PlanStore()
     app.add_middleware(
         CORSMiddleware,
