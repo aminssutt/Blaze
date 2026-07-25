@@ -40,6 +40,7 @@ async def start_incident(request: Request, body: StartRequest | None = None):
 async def reset_incident(request: Request):
     demo = get_demo(request)
     await demo.reset()
+    request.app.state.plans.reset()  # plans + decisions wiped with the run
     return demo.status()
 
 
