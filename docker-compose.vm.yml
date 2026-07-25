@@ -18,6 +18,14 @@ services:
     depends_on: !override {}
     environment:
       - VLLM_BASE_URL=http://localhost:8000
+    # Demo box runs the real pipeline: STT must live in the backend env, and the
+    # Whisper weights must survive container recreation.
+    command: >
+      bash -c "pip install --quiet ./backend faster-whisper &&
+               uvicorn backend.api.main:app --host 0.0.0.0 --port ${BACKEND_PORT:-8080}"
+    volumes:
+      - .:/app
+      - whisper-cache:/root/.cache
     restart: unless-stopped
 
   frontend:
@@ -27,3 +35,6 @@ services:
       - BACKEND_URL=http://localhost:8080
       - NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
     restart: unless-stopped
+
+volumes:
+  whisper-cache:
