@@ -50,6 +50,16 @@ const { INITIAL_INCIDENT_STATE, IncidentStore, reduceEvent } = await import(
 const { deriveSystemStatuses, metricsAreMock } = await import(
   "../lib/systemStatus.ts"
 );
+const {
+  buildProvenanceRows,
+  degToCompass,
+  environmentReadings,
+  formatAge,
+  hotspotSummary,
+  roadStates,
+  roadTone,
+  secondsBetween,
+} = await import("../components/situation/snapshotModel.ts");
 
 const frontendRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(frontendRoot, "..");
@@ -454,4 +464,117 @@ test("vLLM is marked inferred while only agent activity is observed", () => {
 
   const late = byId(deriveSystemStatuses(replayThrough(firstMetric.sequence)), "vllm");
   assert.equal(late.value, firstMetric.payload.inference_engine);
+});
+
+/* -------------------------------------------------------------------------- */
+/* Ticket #45 — situation summary derivation                                  */
+/* -------------------------------------------------------------------------- */
+
+test("wind direction converts to the compass point a chief reads", () => {
+  assert.equal(degToCompass(0), "N");
+  assert.equal(degToCompass(90), "E");
+  assert.equal(degToCompass(180), "S");
+  assert.equal(degToCompass(320), "NW"); // the demo's reported wind
+  assert.equal(degToCompass(360), "N");
+  assert.equal(degToCompass(-40), "NW", "negative degrees normalise");
+  assert.equal(degToCompass(null), null);
+});
+
+test("age formatting stays compact and refuses nonsense", () => {
+  assert.equal(formatAge(12), "12 s");
+  assert.equal(formatAge(240), "4 min");
+  assert.equal(formatAge(7500), "2 h 05");
+  assert.equal(formatAge(null), null);
+  assert.equal(formatAge(-5), null, "a negative age is not rendered");
+  assert.equal(secondsBetween("2026-07-25T10:00:00.000Z", "2026-07-25T10:00:30.000Z"), 30);
+  assert.equal(secondsBetween(null, "2026-07-25T10:00:00.000Z"), null);
+  assert.equal(secondsBetween("not-a-date", "2026-07-25T10:00:00.000Z"), null);
+});
+
+test("environment readings come only from fields the snapshot carried", () => {
+  const state = replayAll();
+  const readings = environmentReadings(state.snapshot);
+  const byLabel = Object.fromEntries(readings.map((r) => [r.label, r]));
+
+  // The demo snapshot reports 34.2 °C, 21 % RH, 28 km/h gusting 46, from 320°.
+  assert.equal(byLabel.wind.value, "28 km/h");
+  assert.match(byLabel.wind.hint, /from NW \(320°\)/);
+  assert.match(byLabel.wind.hint, /gusts 46/);
+  assert.equal(byLabel.wind.tone, "alert", "46 km/h gusts must read as alert");
+  assert.equal(byLabel.humidity.tone, "alert", "21 % RH is red-flag fire weather");
+  // 34.2 °C is hot but under the 35 °C alert threshold — warn, not alert.
+  assert.equal(byLabel.temp.tone, "warn");
+  assert.equal(byLabel.slope.value, "7.5 %");
+  assert.equal(byLabel.elevation.value, "118 m");
+
+  // A snapshot with no weather at all must yield NO invented readings.
+  const bare = environmentReadings({ ...state.snapshot, weather: null, terrain: null });
+  assert.deepEqual(bare, [], "missing weather must not become zeros");
+});
+
+test("road states preserve per-vehicle restrictions and severity", () => {
+  const state = replayAll();
+  const roads = roadStates(state.snapshot);
+  assert.ok(roads.length > 0);
+
+  const d17 = roads.find((r) => r.roadId === "d17");
+  assert.ok(d17, "the demo snapshot must carry D17");
+  assert.equal(d17.status, "blocked");
+  assert.equal(roadTone(d17), "alert");
+
+  const northAccess = roads.find((r) => r.roadId === "north-access");
+  assert.equal(northAccess.status, "open");
+  assert.equal(roadTone(northAccess), "ok");
+
+  // A road open but restricted to some vehicle types is a warning, not "ok".
+  assert.equal(
+    roadTone({ roadId: "x", status: "open", restrictedTo: ["CCF"], note: null }),
+    "warn",
+  );
+});
+
+test("hotspots are summarised without inventing a count", () => {
+  const state = replayAll();
+  const summary = hotspotSummary(state.snapshot);
+  assert.equal(summary.count, 1);
+  assert.equal(summary.maxFrpMw, 14.8);
+  assert.deepEqual(summary.confidences, ["high"]);
+
+  const none = hotspotSummary({ ...state.snapshot, fire_hotspots: [] });
+  assert.deepEqual(none, { count: 0, maxFrpMw: null, confidences: [] });
+});
+
+test("provenance rows expose staleness for cached data", () => {
+  const state = replayAll();
+  const rows = buildProvenanceRows(state.snapshot, state.toolCalls);
+  assert.equal(rows.length, state.snapshot.provenance.length);
+
+  const weather = rows.find((r) => r.field === "weather");
+  assert.ok(weather, "weather provenance must be present");
+  assert.equal(weather.sourceName, "open-meteo");
+  assert.equal(weather.sourceType, "cached_public");
+  // Age is measured against generated_at, so it is stable under replay.
+  assert.ok(weather.ageSeconds > 0, "a cached datum must expose a positive age");
+  assert.ok(formatAge(weather.ageSeconds), "and that age must be renderable");
+
+  // Every row keeps its provenance category — invariant #2.
+  for (const row of rows) {
+    assert.ok(row.sourceType, `${row.field} lost its source_type`);
+    assert.ok(row.sourceName, `${row.field} lost its source_name`);
+  }
+});
+
+test("conflicts and missing information are distinct, non-empty slices", () => {
+  const state = replayAll();
+  const { conflicts, missing_information: missing } = state.snapshot;
+
+  // The demo deliberately ships one of each — the panel styles them
+  // differently, so a regression to zero would hide a real disagreement.
+  assert.equal(conflicts.length, 1, "the demo snapshot must keep its contradiction");
+  assert.equal(missing.length, 2, "the demo snapshot must keep its two gaps");
+  for (const item of [...conflicts, ...missing]) {
+    assert.equal(typeof item, "string");
+    assert.ok(item.length > 0);
+  }
+  assert.notDeepEqual(conflicts, missing);
 });
