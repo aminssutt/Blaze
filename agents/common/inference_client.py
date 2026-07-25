@@ -488,8 +488,8 @@ class GemmaClient:
             # otherwise push the repair prompt past the model window and turn
             # one bad output into an unrecoverable HTTP 400 (issue #53).
             echoed = last_output or ""
-            if len(echoed) > 1500:
-                echoed = echoed[:1500] + " …[output truncated for repair]"
+            if len(echoed) > 800:
+                echoed = echoed[:800] + " …[output truncated for repair]"
             work_messages = work_messages + [
                 {"role": "assistant", "content": echoed},
                 {

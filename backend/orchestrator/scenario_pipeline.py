@@ -373,6 +373,19 @@ class ScenarioPipeline(IncidentPipeline):
                 }
                 for e in self.all_radio_events
             ]
+            # Tight snapshot: keep everything safety-critical (roads for the
+            # vehicle/retreat rules, critical assets + known facts for the
+            # hazmat perimeter), drop or bound the rest.
+            tight_snapshot = dict(planner_snapshot)
+            for key in ("terrain", "buildings_and_parcels", "fire_hotspots", "resources"):
+                tight_snapshot.pop(key, None)
+            for key in ("uncertain_facts", "conflicts", "missing_information"):
+                tight_snapshot[key] = [
+                    str(x)[:150] for x in (tight_snapshot.get(key) or [])[-3:]
+                ]
+            tight_snapshot["known_facts"] = [
+                str(x)[:180] for x in (tight_snapshot.get("known_facts") or [])[-8:]
+            ]
             tight_prev: Optional[Dict[str, Any]] = None
             if previous is not None:
                 feedback = previous.get("safety_review_feedback") or {}
@@ -402,7 +415,7 @@ class ScenarioPipeline(IncidentPipeline):
                 }
             with self._stage(f"{stage_name}_tight"):
                 return await self.planning_agent.draft_plan(
-                    tight_events, planner_snapshot, self.units_doc,
+                    tight_events, tight_snapshot, self.units_doc,
                     previous_plan=tight_prev,
                 )
 
