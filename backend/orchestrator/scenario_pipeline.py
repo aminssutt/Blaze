@@ -948,7 +948,14 @@ class ScenarioPipeline(IncidentPipeline):
     # ------------------------------------------------------------------ #
 
     def _concurrency_proof(self, batch_results) -> Dict[str, Any]:
-        stt_wall = self.windows.get("stt_batch", {}).get("duration_s")
+        # True batch wall = last completion offset from the batch start (the
+        # "stt_batch" window is closed lazily after overlapping LLM work, so
+        # its duration would overstate the wall; live finding #53 run 5).
+        stt_wall = (
+            round(max(self.stt_completion_offsets.values()), 3)
+            if self.stt_completion_offsets
+            else self.windows.get("stt_batch", {}).get("duration_s")
+        )
         individual = {
             r.audio_id: round(r.latency_ms / 1000.0, 3) for r in batch_results
         }
@@ -1061,6 +1068,7 @@ class ScenarioPipeline(IncidentPipeline):
         }
 
     def _build_scenario_report(self, **kw: Any) -> Dict[str, Any]:
+        self.timings_s["scenario_total"] = self._now_off()
         self._feed_metrics()
         audit_path = self.output_dir / f"{self.incident_id}_tool_audit.jsonl"
         self.audit_log.export_jsonl(audit_path)
