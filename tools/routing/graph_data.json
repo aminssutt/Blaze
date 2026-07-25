@@ -1,0 +1,170 @@
+{
+  "source_type": "seeded_demo",
+  "source_name": "routing-graph",
+  "scenario_id": "wildfire-demo-01",
+  "crs": "EPSG:4326",
+  "note": "Deterministic routing graph for the wildfire demo. Node coordinates are consistent with data/scenario/roads.json and data/scenario/units.json (zone ~43.45N / 3.75E). Extra connector roads (north-access-link, wp2-track, ft5-link, hangar-track, hangar-access, cp-access) exist only in this file and are owned by tools/routing.",
+  "nodes": [
+    { "node_id": "d17-south", "name": "D17 South End", "lat": 43.4450, "lon": 3.7400 },
+    { "node_id": "charlie-1-pos", "name": "Charlie 1 Position", "lat": 43.4460, "lon": 3.7440 },
+    { "node_id": "command-post", "name": "Command Post", "lat": 43.4470, "lon": 3.7420 },
+    { "node_id": "d17-mid", "name": "D17 Mid Junction", "lat": 43.4500, "lon": 3.7480 },
+    { "node_id": "alpha-3-pos", "name": "Alpha 3 Position", "lat": 43.4515, "lon": 3.7490 },
+    { "node_id": "d17-north", "name": "D17 North End", "lat": 43.4550, "lon": 3.7560 },
+    { "node_id": "north-access-jct", "name": "North Access Junction", "lat": 43.4560, "lon": 3.7480 },
+    { "node_id": "water-point-2", "name": "Water Point 2", "lat": 43.4620, "lon": 3.7350 },
+    { "node_id": "ft5-south", "name": "Forest Track 5 South", "lat": 43.4480, "lon": 3.7500 },
+    { "node_id": "ft5-north", "name": "Forest Track 5 North", "lat": 43.4540, "lon": 3.7590 },
+    { "node_id": "hangar-zone", "name": "Hangar Zone", "lat": 43.4570, "lon": 3.7620 }
+  ],
+  "aliases": {
+    "alpha-3": "alpha-3-pos",
+    "alpha3": "alpha-3-pos",
+    "bravo-2": "hangar-zone",
+    "bravo2": "hangar-zone",
+    "bravo-2-pos": "hangar-zone",
+    "charlie-1": "charlie-1-pos",
+    "charlie1": "charlie-1-pos",
+    "pc": "command-post",
+    "d17": "d17-mid",
+    "water-point2": "water-point-2",
+    "wp2": "water-point-2",
+    "forest-track-5": "ft5-south",
+    "north-access": "north-access-jct"
+  },
+  "edges": [
+    {
+      "edge_id": "d17-a",
+      "road_id": "d17",
+      "road_name": "D17",
+      "road_type": "departmental_road",
+      "from_node": "d17-south",
+      "to_node": "charlie-1-pos",
+      "speed_kmh": 60,
+      "allowed_vehicle_types": ["CCF", "light_vehicle", "command_post"]
+    },
+    {
+      "edge_id": "d17-b",
+      "road_id": "d17",
+      "road_name": "D17",
+      "road_type": "departmental_road",
+      "from_node": "charlie-1-pos",
+      "to_node": "d17-mid",
+      "speed_kmh": 60,
+      "allowed_vehicle_types": ["CCF", "light_vehicle", "command_post"]
+    },
+    {
+      "edge_id": "d17-c",
+      "road_id": "d17",
+      "road_name": "D17",
+      "road_type": "departmental_road",
+      "from_node": "d17-mid",
+      "to_node": "alpha-3-pos",
+      "speed_kmh": 60,
+      "allowed_vehicle_types": ["CCF", "light_vehicle", "command_post"]
+    },
+    {
+      "edge_id": "d17-d",
+      "road_id": "d17",
+      "road_name": "D17",
+      "road_type": "departmental_road",
+      "from_node": "alpha-3-pos",
+      "to_node": "d17-north",
+      "speed_kmh": 60,
+      "allowed_vehicle_types": ["CCF", "light_vehicle", "command_post"]
+    },
+    {
+      "edge_id": "na-a",
+      "road_id": "north-access-link",
+      "road_name": "North Access Link",
+      "road_type": "access_road",
+      "from_node": "alpha-3-pos",
+      "to_node": "north-access-jct",
+      "speed_kmh": 25,
+      "allowed_vehicle_types": ["CCF", "light_vehicle", "command_post"]
+    },
+    {
+      "edge_id": "na-b",
+      "road_id": "north-access",
+      "road_name": "North Access",
+      "road_type": "access_road",
+      "from_node": "north-access-jct",
+      "to_node": "water-point-2",
+      "speed_kmh": 25,
+      "allowed_vehicle_types": ["CCF", "light_vehicle", "command_post"]
+    },
+    {
+      "edge_id": "wp2-a",
+      "road_id": "wp2-track",
+      "road_name": "Water Point 2 Track",
+      "road_type": "access_road",
+      "from_node": "d17-north",
+      "to_node": "water-point-2",
+      "speed_kmh": 40,
+      "allowed_vehicle_types": ["CCF", "light_vehicle", "command_post"]
+    },
+    {
+      "edge_id": "ft5-a",
+      "road_id": "forest-track-5",
+      "road_name": "Forest Track 5",
+      "road_type": "forest_track",
+      "from_node": "ft5-south",
+      "to_node": "ft5-north",
+      "speed_kmh": 20,
+      "allowed_vehicle_types": ["light_vehicle"],
+      "base_restrictions": [
+        { "vehicle_type": "CCF", "reason": "Track not rated for heavy vehicle weight" }
+      ]
+    },
+    {
+      "edge_id": "ft5-link",
+      "road_id": "ft5-link",
+      "road_name": "Forest Track 5 Link",
+      "road_type": "forest_track",
+      "from_node": "d17-mid",
+      "to_node": "ft5-south",
+      "speed_kmh": 25,
+      "allowed_vehicle_types": ["CCF", "light_vehicle", "command_post"]
+    },
+    {
+      "edge_id": "hangar-track",
+      "road_id": "hangar-track",
+      "road_name": "Hangar Track",
+      "road_type": "access_road",
+      "from_node": "ft5-north",
+      "to_node": "hangar-zone",
+      "speed_kmh": 25,
+      "allowed_vehicle_types": ["CCF", "light_vehicle", "command_post"]
+    },
+    {
+      "edge_id": "hangar-access",
+      "road_id": "hangar-access",
+      "road_name": "Hangar Access",
+      "road_type": "access_road",
+      "from_node": "d17-north",
+      "to_node": "hangar-zone",
+      "speed_kmh": 40,
+      "allowed_vehicle_types": ["CCF", "light_vehicle", "command_post"]
+    },
+    {
+      "edge_id": "cp-a",
+      "road_id": "cp-access",
+      "road_name": "Command Post Access",
+      "road_type": "access_road",
+      "from_node": "command-post",
+      "to_node": "charlie-1-pos",
+      "speed_kmh": 30,
+      "allowed_vehicle_types": ["CCF", "light_vehicle", "command_post"]
+    },
+    {
+      "edge_id": "cp-b",
+      "road_id": "cp-access",
+      "road_name": "Command Post Access",
+      "road_type": "access_road",
+      "from_node": "command-post",
+      "to_node": "d17-south",
+      "speed_kmh": 30,
+      "allowed_vehicle_types": ["CCF", "light_vehicle", "command_post"]
+    }
+  ]
+}
