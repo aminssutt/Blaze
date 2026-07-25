@@ -6,14 +6,12 @@
 import Link from "next/link";
 
 const ANCHORS = [
-  { id: "problem", label: "Problem" },
+  { id: "why-now", label: "Why now" },
   { id: "how-it-works", label: "How it works" },
-  { id: "agents", label: "Agents" },
-  { id: "human-veto", label: "Human veto" },
-  { id: "proof", label: "Proof" },
+  { id: "proof", label: "Measured" },
 ];
 
-export function scrollToSection(id: string) {
+function scrollToSection(id: string) {
   document
     .getElementById(id)
     ?.scrollIntoView({ behavior: "smooth", block: "start" });

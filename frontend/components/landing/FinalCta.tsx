@@ -1,19 +1,18 @@
-// Landing v2 — Section 06 · FINAL CTA. Big close + the demo film slot.
+// Landing v3 — final CTA. One heading, one button.
 
 "use client";
 
 import Link from "next/link";
 import { Reveal } from "./primitives";
-import VideoSlot from "./VideoSlot";
 
 export default function FinalCta() {
   return (
-    <section aria-labelledby="cta-title" className="py-24 lg:py-32">
+    <section aria-labelledby="cta-title" className="py-20 lg:py-28">
       <div className="mx-auto max-w-6xl px-6 lg:px-10">
         <Reveal className="text-center">
           <h2
             id="cta-title"
-            className="mx-auto max-w-3xl text-3xl font-semibold leading-tight tracking-tight lg:text-5xl"
+            className="mx-auto max-w-3xl text-3xl font-semibold leading-tight tracking-tight lg:text-4xl"
             style={{ color: "var(--blaze-text)" }}
           >
             From radio chatter to a validated voice order.{" "}
@@ -32,10 +31,6 @@ export default function FinalCta() {
           >
             Open demo →
           </Link>
-        </Reveal>
-
-        <Reveal delay={0.15} className="mx-auto mt-14 max-w-3xl">
-          <VideoSlot />
         </Reveal>
       </div>
     </section>

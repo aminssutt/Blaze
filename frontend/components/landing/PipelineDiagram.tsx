@@ -19,7 +19,6 @@ const RAIL_PATH = "M 125 100 L 875 100 C 985 100 985 360 875 360 L 125 360";
 
 type Node = {
   id: string;
-  emoji: string;
   title: string;
   tip: string;
   /** Node center in viewBox coordinates. */
@@ -33,7 +32,6 @@ type Node = {
 const NODES: Node[] = [
   {
     id: "radio",
-    emoji: "📻",
     title: "Radio",
     tip: "Five French voice reports from the fireground — corrections, contradictions, stress.",
     x: 125,
@@ -42,7 +40,6 @@ const NODES: Node[] = [
   },
   {
     id: "stt",
-    emoji: "📝",
     title: "faster-whisper STT",
     tip: "Local speech-to-text — timestamped French transcripts, fully offline.",
     x: 375,
@@ -51,7 +48,6 @@ const NODES: Node[] = [
   },
   {
     id: "radio-intel",
-    emoji: "🤖",
     title: "Radio Intelligence",
     tip: "Gemma extracts structured facts — evidence must quote the transcript.",
     x: 625,
@@ -60,7 +56,6 @@ const NODES: Node[] = [
   },
   {
     id: "context",
-    emoji: "🌍",
     title: "Situation Context + tools",
     tip: "7 allowlisted tools — weather, terrain, hotspots, cadastre — every field provenance-labeled.",
     x: 875,
@@ -69,7 +64,6 @@ const NODES: Node[] = [
   },
   {
     id: "planning",
-    emoji: "🗺️",
     title: "Tactical Planning",
     tip: "Facts and context fused into a versioned draft plan — evidence IDs verified by code.",
     x: 875,
@@ -78,7 +72,6 @@ const NODES: Node[] = [
   },
   {
     id: "critic",
-    emoji: "🛡️",
     title: "Safety Critic",
     tip: "8 hard-coded safety rules attack the plan — pass, revise or block.",
     x: 625,
@@ -87,7 +80,6 @@ const NODES: Node[] = [
   },
   {
     id: "veto",
-    emoji: "👤",
     title: "HUMAN VETO",
     tip: "Dispatch is structurally impossible until the commander approves.",
     x: 375,
@@ -97,7 +89,6 @@ const NODES: Node[] = [
   },
   {
     id: "dispatch",
-    emoji: "📢",
     title: "Dispatch + Piper TTS",
     tip: "One French voice order per unit, synthesized locally.",
     x: 125,
@@ -106,12 +97,10 @@ const NODES: Node[] = [
   },
 ];
 
-const TAGS = [
-  "schema-validated",
-  "provenance-labeled",
-  "guardrail-checked",
-  "HUMAN VETO",
-  "offline-first",
+const VERDICTS = [
+  { label: "pass", color: "var(--blaze-ok)" },
+  { label: "revise", color: "var(--blaze-warn)" },
+  { label: "block", color: "var(--blaze-alert)" },
 ];
 
 /** Keyframe times: node is hot from `at` for ~14% of the loop, then cools. */
@@ -157,9 +146,6 @@ function DiagramNode({ node, index }: { node: Node; index: number }) {
         >
           {String(index + 1).padStart(2, "0")}
         </p>
-        <p className="mt-0.5 text-base leading-none" aria-hidden>
-          {node.emoji}
-        </p>
         <p
           className="mt-1 text-[12.5px] font-semibold leading-tight"
           style={{ color: node.veto ? accent : "var(--blaze-text)" }}
@@ -195,21 +181,19 @@ export default function PipelineDiagram() {
     >
       <div className="mx-auto max-w-6xl px-6 lg:px-10">
         <Reveal>
-          <Eyebrow index="02" label="How BLAZE works" />
+          <Eyebrow index="02" label="How it works" />
           <h2
             id="how-title"
-            className="mt-4 max-w-3xl text-3xl font-semibold leading-tight tracking-tight lg:text-5xl"
+            className="mt-4 max-w-3xl text-3xl font-semibold leading-tight tracking-tight lg:text-4xl"
             style={{ color: "var(--blaze-text)" }}
           >
             One radio message, end to end — on one machine.
           </h2>
           <p
-            className="mt-6 max-w-2xl text-[16px] leading-relaxed"
+            className="mt-5 max-w-2xl text-[15px] leading-relaxed"
             style={{ color: "var(--blaze-text-muted)" }}
           >
-            Every transmission travels the same audited path: transcribed
-            locally, structured by Gemma agents, stress-tested by hard-coded
-            safety rules — and stopped dead until a human commander approves.
+            Hover any stage for the one-line explanation.
           </p>
         </Reveal>
 
@@ -298,7 +282,7 @@ export default function PipelineDiagram() {
                 className="mt-0.5 text-[15px] font-semibold"
                 style={{ color: node.veto ? "var(--blaze-accent)" : "var(--blaze-text)" }}
               >
-                {node.emoji} {node.title}
+                {node.title}
               </p>
               <p className="mt-1 text-[13px] leading-snug" style={{ color: "var(--blaze-text-muted)" }}>
                 {node.tip}
@@ -307,19 +291,30 @@ export default function PipelineDiagram() {
           ))}
         </motion.ol>
 
-        <Reveal delay={0.15} className="mt-14 flex flex-wrap items-center justify-center gap-2">
-          {TAGS.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-sm border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em]"
-              style={{
-                borderColor: tag === "HUMAN VETO" ? "var(--blaze-accent-dim)" : "var(--blaze-border-strong)",
-                color: tag === "HUMAN VETO" ? "var(--blaze-accent)" : "var(--blaze-text-faint)",
-              }}
-            >
-              {tag}
+        <Reveal delay={0.15} className="mt-14 flex flex-wrap items-center justify-center gap-4">
+          <p
+            className="text-[15px] font-semibold"
+            style={{ color: "var(--blaze-text)" }}
+          >
+            The AI proposes.{" "}
+            <span style={{ color: "var(--blaze-accent)" }}>
+              The commander decides.
             </span>
-          ))}
+          </p>
+          <span
+            className="flex items-center gap-2"
+            aria-label="Safety review verdicts: pass, revise, block"
+          >
+            {VERDICTS.map((verdict) => (
+              <span
+                key={verdict.label}
+                className="rounded-full border px-3 py-1 font-mono text-[11px] uppercase tracking-[0.16em]"
+                style={{ borderColor: verdict.color, color: verdict.color }}
+              >
+                {verdict.label}
+              </span>
+            ))}
+          </span>
         </Reveal>
       </div>
     </section>
