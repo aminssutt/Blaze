@@ -32,6 +32,7 @@
 
 import { useEffect } from "react";
 import { useIncidentState, useSessionControls } from "@/lib/session";
+import OpsNav from "@/components/ops/OpsNav";
 import HeaderBar from "@/components/HeaderBar";
 import PlayerBar from "@/components/PlayerBar";
 import SystemBanners from "@/components/banners/SystemBanners";
@@ -91,6 +92,9 @@ export default function Home() {
     // and the whole page scrolls once real scenario data arrives. `flex-none`
     // restores `flex-basis: auto`, letting the 100vh height actually apply.
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden p-2 xl:h-screen xl:flex-none xl:overflow-hidden">
+      {/* operator tabs (Essentiel / Intervention / Système) */}
+      <OpsNav />
+
       {/* region 1 */}
       <HeaderBar />
 
