@@ -1,0 +1,8 @@
+# BLAZE STT — faster-whisper (local, offline after first model download)
+# Install (from speech/stt/):
+#   python -m venv .venv-stt
+#   .venv-stt\Scripts\pip install -r requirements.txt
+faster-whisper>=1.1.0
+# Pinned: av 18.x (pulled by default) is blocked by Windows Smart App Control
+# (unsigned brand-new wheel, no cloud reputation yet). 13.1.0 loads fine.
+av==13.1.0
