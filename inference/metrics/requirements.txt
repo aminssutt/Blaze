@@ -1,0 +1,4 @@
+# inference/metrics — runtime is stdlib-only (subprocess, threading, statistics).
+# The pins below are test-time dependencies.
+pytest>=8.0
+jsonschema>=4.22
