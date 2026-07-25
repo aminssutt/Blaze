@@ -28,6 +28,45 @@ def format_sse(envelope: dict) -> str:
     )
 
 
+async def event_stream(
+    bus: EventBus,
+    resume_after: int,
+    is_disconnected,
+    heartbeat_interval_s: float = HEARTBEAT_INTERVAL_S,
+):
+    """Yield SSE-formatted chunks from the bus, with heartbeats during silence.
+
+    The pending ``__anext__`` lives in a task that survives heartbeat timeouts:
+    ``wait_for`` would cancel it, and a cancelled ``__anext__`` kills the whole
+    subscription generator — one silent interval and the stream went dead air.
+    """
+    events = bus.subscribe(after_sequence=resume_after)
+    pending: asyncio.Task | None = None
+    try:
+        while True:
+            if await is_disconnected():
+                return
+            if pending is None:
+                pending = asyncio.ensure_future(events.__anext__())
+            done, _ = await asyncio.wait({pending}, timeout=heartbeat_interval_s)
+            if not done:
+                yield ": heartbeat\n\n"
+                continue
+            finished, pending = pending, None
+            try:
+                envelope = finished.result()
+            except StopAsyncIteration:
+                return
+            yield format_sse(envelope)
+    finally:
+        if pending is not None:
+            pending.cancel()
+            with suppress(asyncio.CancelledError, Exception):
+                await pending
+        with suppress(Exception):
+            await events.aclose()
+
+
 @router.get("/events/stream")
 async def stream_events(
     request: Request,
@@ -44,26 +83,8 @@ async def stream_events(
         resume_after = max(resume_after, int(last_event_id))
     bus = get_bus(request)
 
-    async def generator():
-        events = bus.subscribe(after_sequence=resume_after)
-        try:
-            while True:
-                if await request.is_disconnected():
-                    return
-                try:
-                    envelope = await asyncio.wait_for(
-                        events.__anext__(), timeout=HEARTBEAT_INTERVAL_S
-                    )
-                except asyncio.TimeoutError:
-                    yield ": heartbeat\n\n"
-                    continue
-                yield format_sse(envelope)
-        finally:
-            with suppress(Exception):
-                await events.aclose()
-
     return StreamingResponse(
-        generator(),
+        event_stream(bus, resume_after, request.is_disconnected),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

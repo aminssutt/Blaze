@@ -7,7 +7,7 @@ from jsonschema import Draft7Validator
 from backend.api.config import REPO_ROOT
 from backend.streaming.bus import EventBus
 from backend.streaming.replay import load_mock_envelopes, replay_mock_stream
-from backend.streaming.sse import format_sse
+from backend.streaming.sse import event_stream, format_sse
 
 ENVELOPE_SCHEMA = json.loads(
     (REPO_ROOT / "contracts" / "schemas" / "event_envelope.schema.json").read_text()
@@ -65,3 +65,35 @@ def test_sse_wire_format_carries_sequence_as_id():
     wire = format_sse(envelope)
     assert wire.startswith("id: 1\nevent: incident.started\ndata: ")
     assert json.loads(wire.split("data: ", 1)[1].strip()) == envelope
+
+
+@pytest.mark.asyncio
+async def test_heartbeat_silence_does_not_kill_the_stream():
+    # Regression (found in PR #114): wait_for cancelled the pending __anext__ on
+    # heartbeat timeout, killing the subscription generator — after one silent
+    # interval the stream went dead air and events published later never arrived.
+    bus = EventBus("wildfire-demo-01")
+    await bus.publish("incident.started", {"x": 1})
+
+    async def never_disconnected() -> bool:
+        return False
+
+    chunks: list[str] = []
+
+    async def consume() -> None:
+        async for chunk in event_stream(
+            bus, 0, never_disconnected, heartbeat_interval_s=0.05
+        ):
+            chunks.append(chunk)
+            if '"incident.updated"' in chunk:
+                return
+
+    consumer = asyncio.create_task(consume())
+    await asyncio.sleep(0.2)  # several heartbeat intervals of pure silence
+    await bus.publish("incident.updated", {"x": 2})
+    await asyncio.wait_for(consumer, timeout=2)
+
+    data_chunks = [c for c in chunks if c.startswith("id: ")]
+    heartbeats = [c for c in chunks if c.startswith(": heartbeat")]
+    assert [c.split("\n", 1)[0] for c in data_chunks] == ["id: 1", "id: 2"]
+    assert len(heartbeats) >= 2  # the silence produced heartbeats, not a dead stream
