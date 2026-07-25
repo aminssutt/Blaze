@@ -789,7 +789,14 @@ export function reduceEvent(
       next.plan = plan;
       next.planVersions = Math.max(state.planVersions, plan.version ?? state.planVersions + 1);
       // Ticket #38 → #46: keep EVERY version, not just the latest.
-      next.plans = [...state.plans, plan];
+      // Ticket #54: upsert by plan_id — the live backend re-announces an
+      // already-known version when the UI registers a replayed plan before a
+      // decision (POST /plans), and duplicate ids would break keyed lists.
+      const knownAt = state.plans.findIndex((p) => p.plan_id === plan.plan_id);
+      next.plans =
+        knownAt === -1
+          ? [...state.plans, plan]
+          : state.plans.map((p, i) => (i === knownAt ? plan : p));
       break;
     }
 
