@@ -14,7 +14,7 @@ const SITE_LINKS = [
 ];
 
 const PRODUCT_LINKS = [
-  { href: "/demo", label: "Open demo", external: false },
+  { href: "/workflow", label: "Open demo", external: false },
   { href: "/expert", label: "Expert view", external: false },
   { href: "https://github.com/aminssutt/Blaze", label: "GitHub repo", external: true },
 ];

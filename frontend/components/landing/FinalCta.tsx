@@ -22,7 +22,7 @@ export default function FinalCta() {
             </span>
           </h2>
           <Link
-            href="/demo"
+            href="/workflow"
             className="mt-8 inline-block rounded-md border px-8 py-3.5 font-mono text-base font-semibold uppercase tracking-[0.12em]"
             style={{
               background: "var(--blaze-accent)",
