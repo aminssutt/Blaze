@@ -86,6 +86,16 @@ export default function Hero() {
           human commander before a single order goes out.
         </motion.p>
 
+        <motion.p
+          className="mt-5 font-mono text-[11px] uppercase tracking-[0.22em]"
+          style={{ color: "var(--blaze-text-faint)" }}
+          initial={reduced ? false : { opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        >
+          Wildfire response · Civil protection · Emergency operations
+        </motion.p>
+
         <motion.div
           className="mt-8 flex flex-wrap items-center gap-4"
           initial={reduced ? false : { opacity: 0 }}
@@ -103,6 +113,22 @@ export default function Hero() {
           >
             Open demo →
           </Link>
+          <a
+            href="#how-it-works"
+            onClick={(e) => {
+              e.preventDefault();
+              document
+                .getElementById("how-it-works")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+            className="rounded-md border px-5 py-2.5 font-mono text-sm font-semibold uppercase tracking-[0.12em] transition-colors"
+            style={{
+              borderColor: "var(--blaze-border-strong)",
+              color: "var(--blaze-text)",
+            }}
+          >
+            See how it works ↓
+          </a>
           <span className="font-mono text-[11px]" style={{ color: "var(--blaze-text-faint)" }}>
             guided live demo · 5 audios · expert control room inside
           </span>
