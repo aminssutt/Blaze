@@ -29,7 +29,10 @@ given, containing:
 - `objectives` — short, concrete operational objectives, most important first.
 - `unit_actions` — AT MOST ONE action per unit that needs tasking. Each action must
   contain: the target `unit_id`, an `action_type` (e.g. `retreat`, `suppression`,
-  `reconnaissance`, `confirm_access`, `hold_position`), a concise `instruction` a
+  `reconnaissance`, `confirm_access`, `standby`, `monitor`; CAUTION: `hold_position`
+  and `defend` mean ENGAGED ON SCENE and mechanically require a retreat option for
+  that unit in the same plan — for a unit waiting somewhere safe use `standby`), a
+  concise `instruction` a
   radio operator could read aloud, a `route` / `destination` when movement is
   involved (use road ids from the road graph, never invent roads), a `reason`, a
   `priority` (`low` | `medium` | `high` | `critical`), `evidence_ids`, a

@@ -76,6 +76,36 @@ FALLBACK_CONTEXT_TOOLS = ("get_weather", "get_resources")
 DEFAULT_MAX_REVISIONS = 2
 DEFAULT_LLM_TIMEOUT_S = 120.0
 
+#: Deterministic remediation hints attached to the revision feedback when a
+#: mechanical safety rule fails — live runs showed the planner cannot infer
+#: HOW to satisfy the rule engine from the failure text alone (issue #52).
+RULE_REMEDIATION_HINTS: Dict[str, str] = {
+    "sr-retreat-route": (
+        "For each engaged unit named in the failure: add a separate 'retreat' "
+        "action with an explicit open route, OR add a 'retreat_route': '<road_id>' "
+        "field inside its action, OR — if the unit is actually waiting at a safe "
+        "location — change its action_type to 'standby' ('hold_position'/'defend' "
+        "mechanically count as engaged)."
+    ),
+    "sr-vehicle-road-compat": (
+        "Route every moving unit only on roads whose allowed_vehicle_types include "
+        "its vehicle type, using road ids exactly as written in ROAD_GRAPH "
+        "(e.g. 'd17', 'north-access'); never a name, never the string 'null'."
+    ),
+    "sr-min-water": (
+        "Do not task offensive suppression for a unit below the water thresholds; "
+        "add a refill action at a water point instead."
+    ),
+    "sr-visibility": (
+        "Remove offensive taskings while visibility is near-zero; prefer withdrawal."
+    ),
+    "sr-hazmat-perimeter": (
+        "Add an exclusion-perimeter action (action_type 'establish_perimeter', "
+        "300 m default radius) around the suspected hazardous material."
+    ),
+    "sr-human-approval": "Set human_approval_required=true on EVERY action.",
+}
+
 
 class PipelineFailure(RuntimeError):
     """The pipeline could not complete honestly (state machine already failed over)."""
@@ -497,11 +527,21 @@ class IncidentPipeline:
             previous = plan.to_dict()
             # Orchestrator-level feedback channel: the safety review travels to
             # the planner inside the previous-plan context (no agent code change).
+            failed_rules = [
+                str(c.get("rule_id"))
+                for c in review.get("rule_checks", [])
+                if c.get("status") == "fail" or c.get("passed") is False
+            ]
             previous["safety_review_feedback"] = {
                 "status": review["status"],
                 "critical_objections": review.get("critical_objections", []),
                 "required_changes": review.get("required_changes", []),
                 "required_confirmations": review.get("required_confirmations", []),
+                "remediation_hints": [
+                    f"{rule_id}: {RULE_REMEDIATION_HINTS[rule_id]}"
+                    for rule_id in failed_rules
+                    if rule_id in RULE_REMEDIATION_HINTS
+                ],
             }
             with self._stage(f"tactical_planning_v{revision + 1}"):
                 plan = await self.planning_agent.draft_plan(
