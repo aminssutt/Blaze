@@ -1,0 +1,26 @@
+# VM demo deployment (L40S box) — backend + frontend only, host networking.
+#
+# vLLM is served natively on the VM (127.0.0.1:8000, canonical flags from
+# inference/vllm/serve_gemma.md); a containerized vLLM would double GPU memory.
+# Host networking is also what the inference client's local-only guard expects:
+# it refuses any non-localhost VLLM_BASE_URL.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.vm.yml up -d backend frontend
+#
+# Access from a laptop: ssh -N -L 3000:localhost:3000 -L 8080:localhost:8080 shadeform@<vm-ip>
+
+services:
+  backend:
+    network_mode: host
+    ports: !override []
+    environment:
+      - VLLM_BASE_URL=http://localhost:8000
+    restart: unless-stopped
+
+  frontend:
+    network_mode: host
+    ports: !override []
+    environment:
+      - BACKEND_URL=http://localhost:8080
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
+    restart: unless-stopped
