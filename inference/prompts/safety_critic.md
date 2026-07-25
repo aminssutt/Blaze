@@ -64,3 +64,24 @@ Respond with ONLY a JSON object matching the provided schema:
 - If, after genuinely trying, you find no danger beyond the mechanical results, return
   `recommended_status: "pass"` with empty lists. Do not fabricate objections to look
   thorough — false alarms erode the commander's trust.
+
+## Severity calibration (documented fix for issue #52, observed in live runs)
+
+Every review costs a full planning round: a `material` objection sends the plan back to
+the planner INSTEAD of to the human commander. Calibrate accordingly:
+
+- Use `material` ONLY for a concrete, evidence-backed danger that the plan FAILS to
+  mitigate and that the planner must fix before the commander even sees the plan
+  (e.g. an engaged unit with no escape option, a tasking that contradicts a radio
+  report, a unit sent INTO an unassessed hazard zone).
+- A residual risk the plan already mitigates defensively (retreat ordered, stand-off
+  reconnaissance, forward operations suspended, abort criteria stated) or an unknown
+  awaiting field confirmation is NOT a `material` objection. Record it as
+  `severity: "minor"` and/or an entry in `required_confirmations` — those belong to
+  the human commander's decision, not to another planning loop.
+- Do not restate as an objection what the plan itself already lists in its
+  `uncertainties` or `assumptions` together with a mitigation; convert it into a
+  `required_confirmation` instead.
+- When every mechanical check passes and the plan's actions are defensive, recommend
+  `pass` with your remaining concerns as `required_confirmations`. `pass` only means
+  "ready for human review with these confirmations", never "safe" or "approved".
