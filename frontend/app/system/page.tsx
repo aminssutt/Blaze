@@ -11,6 +11,9 @@
  * Around it: a live GET /health probe (10 s poll, independent of the stream),
  * the NVIDIA cockpit, and a dated installation record clearly labeled as a
  * setup reading.
+ *
+ * Plus the Gemma consumption section (per-agent table + scenario budget),
+ * 100% derived from reduced stream events — see GemmaConsumptionTable.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -20,6 +23,7 @@ import { getBackendBase } from "@/lib/streamMode";
 import OpsNav from "@/components/ops/OpsNav";
 import PlayerBar from "@/components/PlayerBar";
 import StreamModeToggle from "@/components/controls/StreamModeToggle";
+import GemmaConsumptionTable from "@/components/metrics/GemmaConsumptionTable";
 import NvidiaMetricsPanel from "@/components/metrics/NvidiaMetricsPanel";
 import { Panel, StatusDot } from "@/components/ui";
 
@@ -409,12 +413,16 @@ export default function SystemView() {
 
       <PipelineStages />
 
-      <main className="grid gap-3 lg:grid-cols-[3fr_2fr]">
-        <NvidiaMetricsPanel className="min-h-[20rem]" />
-        <div className="flex flex-col gap-3">
-          <HealthCard />
-          <InstallCard />
+      <main className="flex flex-col gap-3">
+        <div className="grid gap-3 lg:grid-cols-[3fr_2fr]">
+          <NvidiaMetricsPanel className="min-h-[20rem]" />
+          <div className="flex flex-col gap-3">
+            <HealthCard />
+            <InstallCard />
+          </div>
         </div>
+        {/* Gemma consumption per agent + scenario budget — 100% event-derived. */}
+        <GemmaConsumptionTable />
       </main>
     </div>
   );
