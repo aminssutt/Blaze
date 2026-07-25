@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api.config import get_settings
+from backend.api.demo import DemoController
 from backend.api.health import router as health_router
 from backend.api.routers import ALL_ROUTERS
 from backend.streaming.bus import EventBus
@@ -19,6 +20,8 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title="BLAZE backend", version="0.1.0")
     app.state.event_bus = EventBus(incident_id=settings.scenario_id)
+    app.state.demo = DemoController(app.state.event_bus)
+    app.state.demo.network_mode = settings.network_mode
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
