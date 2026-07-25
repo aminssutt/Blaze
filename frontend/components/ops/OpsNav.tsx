@@ -10,6 +10,7 @@
 
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -30,11 +31,19 @@ export default function OpsNav() {
       >
         <Link
           href="/"
-          className="flex items-center gap-1.5 font-mono text-[12px] font-bold tracking-[0.2em]"
+          className="flex items-center gap-2 font-mono text-[11px] font-bold tracking-[0.2em]"
           style={{ color: "var(--blaze-accent)" }}
           title="BLAZE home"
         >
-          BLAZE<span aria-hidden>▲</span>
+          <Image
+            src="/logo-blaze.png"
+            alt="BLAZE logo"
+            width={28}
+            height={28}
+            className="rounded-full"
+            loading="eager"
+          />
+          BLAZE
         </Link>
 
         <span

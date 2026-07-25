@@ -3,6 +3,7 @@
 
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 
 const ANCHORS = [
@@ -34,9 +35,17 @@ export default function LandingNav() {
             e.preventDefault();
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
-          className="font-mono text-sm font-bold tracking-[0.24em]"
+          className="flex items-center gap-2.5 font-mono text-[13px] font-bold tracking-[0.24em]"
           style={{ color: "var(--blaze-text)" }}
         >
+          <Image
+            src="/logo-blaze.png"
+            alt="BLAZE logo"
+            width={30}
+            height={30}
+            className="rounded-full"
+            loading="eager"
+          />
           BLAZE
         </a>
 

@@ -21,6 +21,7 @@
  * Never scrolls horizontally.
  */
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useIncidentState, usePlayerState, useSessionControls } from "@/lib/session";
 import {
@@ -80,7 +81,15 @@ export default function MonitorPage() {
       {/* header — incident identity + live status chip */}
       <header className="flex shrink-0 flex-wrap items-center gap-3 rounded-md border border-edge bg-surface px-3 py-2">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="text-xl font-bold leading-none tracking-[0.3em] text-accent">
+          <Image
+            src="/logo-blaze.png"
+            alt="BLAZE logo"
+            width={34}
+            height={34}
+            className="shrink-0 rounded-full"
+            loading="eager"
+          />
+          <span className="font-mono text-[12px] font-bold leading-none tracking-[0.24em] text-accent">
             BLAZE
           </span>
           <span className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-faint md:inline">
