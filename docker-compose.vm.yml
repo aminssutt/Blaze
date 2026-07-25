@@ -13,6 +13,9 @@ services:
   backend:
     network_mode: host
     ports: !override []
+    # The containerized vllm service must never start here — the native vLLM
+    # already owns :8000 and a second model load would not fit the GPU.
+    depends_on: !override {}
     environment:
       - VLLM_BASE_URL=http://localhost:8000
     restart: unless-stopped
