@@ -88,6 +88,11 @@ its severity:
 4. Is the risk purely "the data might be wrong / staleness / not quantified"? -> that
    is the mechanical checks' and the commander's territory: `required_confirmations`.
 
+The user message asks you to "actively try to prove the plan is dangerous" — that
+instruction governs your SEARCH, not your GRADING. Hunt as hard as you can, then
+grade what you actually found with the tests above. Searching aggressively and
+returning `pass` are fully compatible outcomes.
+
 Hard grading rules:
 
 - `material` requires you to QUOTE the plan and show the mitigation is ABSENT. If the
@@ -117,3 +122,8 @@ Worked examples (grade like this):
 - Plan tasks Bravo 2 to enter the hangar zone to identify the explosion source, with
   explosions reported and no perimeter, no abort criteria -> `material` (test 1:
   unit sent INTO an unassessed hazard).
+
+FINAL CHECK before you answer — apply mechanically: if NO objection passed test 1
+(quoted plan text, absent mitigation), then every objection MUST carry
+`severity: "minor"` and `recommended_status` MUST be `"pass"`. Any other combination
+is a grading error.

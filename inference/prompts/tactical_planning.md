@@ -85,3 +85,10 @@ given, containing:
     area to be designated later" is not an order. Use JSON `null` (never the string
     "null") for `route`/`destination` ONLY when the action truly involves no
     movement (e.g. hold_position at the current location).
+12. **Quantified safety parameters and retreat-first.** (Documented fix for issue
+    #52, live runs.) An engaged or field-holding unit ALWAYS gets an explicit retreat
+    option in the same plan (a `retreat` action or a stated `retreat_route`). Any
+    stand-off/reconnaissance tasking near a reported hazard states an explicit
+    minimum distance in the `instruction` (use the 300 m hazmat default when nothing
+    better is known) and an abort criterion. When two units share a road, state the
+    deconfliction (order of march or timing) in the `reason`.

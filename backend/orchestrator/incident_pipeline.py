@@ -81,6 +81,34 @@ class PipelineFailure(RuntimeError):
     """The pipeline could not complete honestly (state machine already failed over)."""
 
 
+class TemperedClient:
+    """Delegating GemmaClient wrapper that injects a default temperature.
+
+    Live finding (#52): agents that do not pass ``temperature`` inherit the
+    server default (~1.0), which made the planner produce a structurally
+    different plan on every run (hold_position without retreat, string "null"
+    routes, ...). The orchestrator — configuration owner — pins a low default;
+    an agent explicitly passing ``temperature`` (e.g. the safety critic's 0.2)
+    keeps its own value. No agent code is modified.
+    """
+
+    def __init__(self, client: GemmaClient, temperature: float) -> None:
+        self._client = client
+        self._temperature = float(temperature)
+
+    async def chat(self, messages, **kwargs):  # noqa: ANN001 — passthrough
+        kwargs.setdefault("temperature", self._temperature)
+        return await self._client.chat(messages, **kwargs)
+
+    async def chat_structured(self, messages, **kwargs):  # noqa: ANN001 — passthrough
+        if kwargs.get("temperature") is None:
+            kwargs["temperature"] = self._temperature
+        return await self._client.chat_structured(messages, **kwargs)
+
+    def __getattr__(self, name: str):
+        return getattr(self._client, name)
+
+
 def _utcnow_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -152,18 +180,21 @@ class IncidentPipeline:
         self.stt = SttService()
         self.tts = TTSService(output_dir=self.output_dir / "tts")
 
-        # -- the 5 Gemma agents --------------------------------------------
-        self.radio_agent = RadioIntelligenceAgent(self.client, self.known_units)
+        # -- the 5 Gemma agents (shared client, pinned low temperature) ----
+        tempered = TemperedClient(
+            self.client, float(os.getenv("E2E_AGENT_TEMPERATURE", "0.2"))
+        )
+        self.radio_agent = RadioIntelligenceAgent(tempered, self.known_units)
         self.context_agent = SituationContextAgent(
-            self.client,
+            tempered,
             self.tool_executor,
             catalog=catalog_from_registry(self.registry.describe()),
         )
         self.planning_agent = TacticalPlanningAgent(
-            self.client, tool_executor=self._planner_tool_call
+            tempered, tool_executor=self._planner_tool_call
         )
-        self.safety_agent = SafetyCriticAgent(self.client)
-        self.dispatch_agent = DispatchAgent(self.client)
+        self.safety_agent = SafetyCriticAgent(tempered)
+        self.dispatch_agent = DispatchAgent(tempered)
 
         # -- state machine + event capture ---------------------------------
         self.machine = IncidentStateMachine(
