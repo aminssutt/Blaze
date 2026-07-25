@@ -111,6 +111,15 @@ def _print_summary(report: dict, wall_s: float, out_path: Path) -> None:
           f"concurrent_proven={proof['stt_concurrent_proven']})")
     print(f"context/stt overlap  : {proof.get('context_vs_stt_overlap_s')} s ; "
           f"context/radio overlap: {proof.get('context_vs_radio_track_overlap_s')} s")
+    for wave, stats in proof.get("radio_extraction_waves", {}).items():
+        print(f"radio {wave:<17}: wall={stats.get('wall_s')}s "
+              f"seq_sum={stats.get('sequential_sum_s')}s "
+              f"gain={stats.get('concurrency_gain_s')}s "
+              f"proven={stats.get('concurrent_proven')}")
+    print(f"wave2/planning overlap: {proof.get('wave2_vs_planning_cycle_a_overlap_s')} s ; "
+          f"llm max_concurrent: {proof.get('llm_max_concurrent_observed')}")
+    print(f"tts parallel         : wall={proof['tts_parallel']['wall_s']}s "
+          f"seq_sum={proof['tts_parallel']['sequential_sum_s']}s")
     for entry in report["narrative_beats"]["processed_order"]:
         print(f"  {entry['audio_id']} (t+{entry['scenario_timestamp']}s) "
               f"processed at {entry['processed_at_s']}s -> {entry['event_types']}")

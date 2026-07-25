@@ -106,6 +106,7 @@ class ScenarioPipeline(IncidentPipeline):
         # Parent failure-report hooks (shared lists, populated as we go).
         self._debug_plans = self.plans
         self._debug_reviews = self.reviews
+        self._tts_latencies: List[Dict[str, Any]] = []
 
     # ------------------------------------------------------------------ #
     # Wall-clock windows
@@ -323,7 +324,7 @@ class ScenarioPipeline(IncidentPipeline):
 
         with self._stage(f"planning_{cycle}_v1"):
             plan = await self.planning_agent.draft_plan(
-                self.all_radio_events, snapshot, self.units_doc,
+                self._planner_events(), snapshot, self.units_doc,
                 previous_plan=previous_context,
             )
         self.plans.append(plan.to_dict())
@@ -364,7 +365,7 @@ class ScenarioPipeline(IncidentPipeline):
             previous = self._revision_context(plan.to_dict(), review)
             with self._stage(f"planning_{cycle}_v{revision + 1}"):
                 plan = await self.planning_agent.draft_plan(
-                    self.all_radio_events, snapshot, self.units_doc,
+                    self._planner_events(), snapshot, self.units_doc,
                     previous_plan=previous,
                 )
             self.plans.append(plan.to_dict())
@@ -379,23 +380,65 @@ class ScenarioPipeline(IncidentPipeline):
         return plan, escalated
 
     # ------------------------------------------------------------------ #
-    # Radio extraction in scenario order
+    # Radio extraction — CONCURRENT inference, scenario-order processing
     # ------------------------------------------------------------------ #
+    #
+    # vLLM continuous batching on the L40S handles concurrent requests, so the
+    # radio-intelligence INFERENCE runs concurrently while the downstream
+    # PROCESSING (state machine events, corrections via corrects_event_id,
+    # snapshot updates, re-planning) stays strictly in scenario_timestamp
+    # order. Correction resolution consults the radio agent's recent_context,
+    # so the extraction runs in DEPENDENCY WAVES: audios 1-3 together (none is
+    # a correction), then audios 4-5 together once the wave-1 events are in
+    # the linking context (audio_04 is the correction and needs audios 1-3;
+    # audio_05 is a confirmation, not a correction — it never consults the
+    # linking context, so it can share the second wave). Wave 2 runs
+    # concurrently with the snapshot build + planning cycle A.
 
-    async def _extract_audio(self, item: Mapping[str, Any], *, late: bool) -> List[Dict[str, Any]]:
+    @staticmethod
+    def _slim_event(event: Mapping[str, Any]) -> Dict[str, Any]:
+        """Compact RadioEvent view for the planner prompt (8k window budget).
+
+        Live finding (#53, run 1): the full event dicts (evidence_text,
+        uncertainties, timestamps) pushed the cycle-A revision prompt past the
+        8k window (HTTP 400). The planner only needs identity, typing, links
+        and facts; validation still runs on the FULL events upstream.
+        """
+        slim = {
+            key: event.get(key)
+            for key in (
+                "event_id", "audio_id", "event_type", "unit_id",
+                "location_reference", "is_correction", "corrects_event_id",
+                "confidence",
+            )
+        }
+        slim["facts"] = [str(f) for f in (event.get("facts") or [])][:6]
+        return slim
+
+    def _planner_events(self) -> List[Dict[str, Any]]:
+        return [self._slim_event(e) for e in self.all_radio_events]
+
+    async def _infer_audio(self, item: Mapping[str, Any]) -> None:
+        """Radio-intelligence INFERENCE only (no state machine calls) —
+        safe to run concurrently with other LLM work."""
         audio_id = item["audio_id"]
-        transcript = self.transcripts[audio_id]
+        self._open_window(f"extract_{audio_id}")
         with self._stage(f"radio_intelligence_{audio_id}"):
-            extraction = await self.radio_agent.extract(transcript)
+            extraction = await self.radio_agent.extract(self.transcripts[audio_id])
+        self._close_window(f"extract_{audio_id}")
         self.extractions[audio_id] = extraction
+
+    def _process_extraction(self, item: Mapping[str, Any], *, late: bool) -> List[Dict[str, Any]]:
+        """Scenario-order PROCESSING of a completed extraction (state machine
+        events + incident state) — always called in scenario_timestamp order."""
+        audio_id = item["audio_id"]
+        extraction = self.extractions[audio_id]
         events = [dict(e) for e in extraction.events]
         for event in events:
             if late:
                 self.machine.record_radio_update(dict(event))
             else:
                 self.machine.record_radio_event(dict(event))
-        # Feed the correction-resolution context of the radio agent.
-        self.radio_agent.recent_context.extend(events)
         self.all_radio_events.extend(events)
         self.processed_order.append(
             {
@@ -508,12 +551,22 @@ class ScenarioPipeline(IncidentPipeline):
             )
             return d
 
-        # ---- scenario order: audio 1 first ---------------------------------
-        await _await_transcript("audio_01")
-        events_1 = await self._extract_audio(self.items[0], late=False)
+        # ---- WAVE 1: audios 1-3 extracted CONCURRENTLY ---------------------
+        # (none is a correction, so none consults the linking context)
+        async def _wave1(item: Mapping[str, Any]) -> None:
+            await _await_transcript(item["audio_id"])
+            await self._infer_audio(item)
+
+        wave1 = {
+            item["audio_id"]: asyncio.create_task(_wave1(item))
+            for item in self.items[:3]
+        }
+        await wave1["audio_01"]
+        events_1 = self._process_extraction(self.items[0], late=False)
         if not events_1:
             machine.fail_with_fallback("radio intelligence extracted zero events for audio_01")
             raise PipelineFailure("radio intelligence extracted zero events for audio_01")
+        self.radio_agent.recent_context.extend(events_1)
 
         # ---- context collection IN PARALLEL with the radio track -----------
         machine.start_context_collection({"agent": "situation_context", "parallel_with": "stt+radio"})
@@ -553,20 +606,34 @@ class ScenarioPipeline(IncidentPipeline):
                 selection=selection, requests=requests, tool_results=tool_results
             )
 
-        async def _radio_2_track() -> None:
+        async def _radio_wave1_rest() -> None:
             self._open_window("radio_track_intake")
-            await _await_transcript("audio_02")
-            await self._extract_audio(self.items[1], late=False)
+            await asyncio.gather(wave1["audio_02"], wave1["audio_03"])
             self._close_window("radio_track_intake")
 
-        await asyncio.gather(_context_track(), _radio_2_track())
+        await asyncio.gather(_context_track(), _radio_wave1_rest())
+        events_2 = self._process_extraction(self.items[1], late=False)
+        self.radio_agent.recent_context.extend(events_2)
+        # audio_03 joins the LINKING context now (scenario order); its incident
+        # processing happens at its narrative moment, after planning cycle A.
+        self.radio_agent.recent_context.extend(
+            [dict(e) for e in self.extractions["audio_03"].events]
+        )
 
         # Whole batch done (it overlapped the radio/context work above).
         batch_results = await stt_task
         self._close_window("stt_batch")
-        for item in self.items[2:]:
+        for item in self.items[3:]:
             await _await_transcript(item["audio_id"])
         machine.complete_radio_extraction()
+
+        # ---- WAVE 2: audios 4-5 extracted CONCURRENTLY with the snapshot ---
+        # build + planning cycle A (audio_04 needs audios 1-3 in the linking
+        # context — available now; audio_05 is not a correction).
+        wave2 = {
+            item["audio_id"]: asyncio.create_task(self._infer_audio(item))
+            for item in self.items[3:]
+        }
 
         # ---- snapshot v1 + PLAN CYCLE A (audios 1-2) -----------------------
         tool_results = ctx_holder["tool_results"]
@@ -583,13 +650,15 @@ class ScenarioPipeline(IncidentPipeline):
         self._close_window("planning_cycle_a")
 
         # ---- audio 3: wind shift -> snapshot/state update ONLY -------------
-        events_3 = await self._extract_audio(self.items[2], late=True)
+        events_3 = self._process_extraction(self.items[2], late=True)
         upd3 = self._apply_wind_update(snapshot, events_3, "audio_03")
         self.snapshot_updates.append(upd3)
         machine.update_situation_snapshot(dict(snapshot))
 
         # ---- audio 4: D17 CORRECTION -> re-plan (cycle B) -------------------
-        events_4 = await self._extract_audio(self.items[3], late=True)
+        await wave2["audio_04"]
+        events_4 = self._process_extraction(self.items[3], late=True)
+        self.radio_agent.recent_context.extend(events_4)
         upd4 = self._apply_d17_correction(snapshot, events_4, "audio_04")
         self.snapshot_updates.append(upd4)
         machine.update_situation_snapshot(dict(snapshot))
@@ -624,7 +693,8 @@ class ScenarioPipeline(IncidentPipeline):
         self._close_window("planning_cycle_b")
 
         # ---- audio 5: explosions CONFIRMED -> final plan (cycle C) ----------
-        events_5 = await self._extract_audio(self.items[4], late=True)
+        await wave2["audio_05"]
+        events_5 = self._process_extraction(self.items[4], late=True)
         upd5 = self._apply_hazard_confirmation(snapshot, events_5, "audio_05")
         self.snapshot_updates.append(upd5)
         machine.update_situation_snapshot(dict(snapshot))
@@ -681,14 +751,31 @@ class ScenarioPipeline(IncidentPipeline):
                 "instruction_count": len(instructions),
             }
         )
+        # Piper TTS in PARALLEL — one thread per unit (onnxruntime sessions
+        # support concurrent run(); synthesize() never raises). The voice is
+        # pre-loaded once to avoid a thundering-herd lazy load.
         tts_results: List[Dict[str, Any]] = []
         with self._stage("tts"):
-            for instruction in instructions:
+            self._open_window("tts_parallel")
+            if self.tts.available:
+                try:
+                    self.tts._load_voice()  # noqa: SLF001 — deterministic preload
+                except Exception:  # pragma: no cover — synthesize() falls back
+                    logger.exception("piper voice preload failed")
+
+            def _synth(instruction: Dict[str, Any]) -> Dict[str, Any]:
                 filename = (
                     f"{self.incident_id}_{instruction['dispatch_id']}_"
                     f"{instruction['unit_id']}.wav"
                 )
-                result = self.tts.synthesize(instruction["message_text"], filename)
+                return self.tts.synthesize(instruction["message_text"], filename)
+
+            from concurrent.futures import ThreadPoolExecutor
+
+            with ThreadPoolExecutor(max_workers=max(1, len(instructions))) as pool:
+                results = list(pool.map(_synth, instructions))
+            self._close_window("tts_parallel")
+            for instruction, result in zip(instructions, results):
                 if result["status"] == "success":
                     instruction["tts_audio_path"] = result["wav_path"]
                 instruction["dispatch_status"] = "ready"
@@ -709,6 +796,7 @@ class ScenarioPipeline(IncidentPipeline):
                     }
                 )
 
+        self._tts_latencies = tts_results
         wav_count = sum(1 for r in tts_results if r["status"] == "success")
         for instruction in instructions:
             instruction["dispatch_status"] = "sent"
@@ -764,8 +852,48 @@ class ScenarioPipeline(IncidentPipeline):
             proof["context_vs_stt_overlap_s"] = self._overlap(ctx, stt)
         if ctx and radio:
             proof["context_vs_radio_track_overlap_s"] = self._overlap(ctx, radio)
+
+        # Concurrent radio-intelligence extraction (waves), measured.
+        proof["radio_extraction_waves"] = {
+            "wave_1_audios_1_3": self._wave_stats(["audio_01", "audio_02", "audio_03"]),
+            "wave_2_audios_4_5": self._wave_stats(["audio_04", "audio_05"]),
+        }
+        w4 = self.windows.get("extract_audio_04")
+        w5 = self.windows.get("extract_audio_05")
+        pa = self.windows.get("planning_cycle_a")
+        if pa and w4 and w5:
+            wave2 = {
+                "start_s": min(w4["start_s"], w5["start_s"]),
+                "end_s": max(w4.get("end_s", 0.0), w5.get("end_s", 0.0)),
+            }
+            proof["wave2_vs_planning_cycle_a_overlap_s"] = self._overlap(wave2, pa)
+
+        # Parallel Piper TTS, measured.
+        tts_w = self.windows.get("tts_parallel")
+        proof["tts_parallel"] = {
+            "wall_s": tts_w.get("duration_s") if tts_w else None,
+            "sequential_sum_s": round(
+                sum((r.get("latency_ms") or 0) for r in self._tts_latencies) / 1000.0, 3
+            ),
+        }
+        proof["llm_max_concurrent_observed"] = self.call_log.max_concurrent
         proof["windows"] = dict(self.windows)
         return proof
+
+    def _wave_stats(self, audio_ids: List[str]) -> Dict[str, Any]:
+        windows = [self.windows.get(f"extract_{a}") for a in audio_ids]
+        windows = [w for w in windows if w and "end_s" in w]
+        if not windows:
+            return {}
+        wall = round(max(w["end_s"] for w in windows) - min(w["start_s"] for w in windows), 3)
+        sequential = round(sum(w["duration_s"] for w in windows), 3)
+        return {
+            "audios": audio_ids,
+            "wall_s": wall,
+            "sequential_sum_s": sequential,
+            "concurrency_gain_s": round(sequential - wall, 3),
+            "concurrent_proven": wall < sequential if len(windows) > 1 else None,
+        }
 
     def _narrative_beats(self, snapshot: Mapping[str, Any], final_plan: Mapping[str, Any]) -> Dict[str, Any]:
         order_ok = [p["audio_id"] for p in self.processed_order] == [
