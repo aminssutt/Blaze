@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens live in ONE place: `design/tokens.css` at the repo root
+ * (imported below with a relative path). This file only maps those tokens
+ * into Tailwind's theme and sets base styles — never redefine token values
+ * here or in components.
+ */
+@import "../../design/tokens.css";
+
+@theme inline {
+  --color-background: var(--blaze-bg);
+  --color-foreground: var(--blaze-text);
+
+  --color-surface: var(--blaze-bg-raised);
+  --color-overlay: var(--blaze-bg-overlay);
+  --color-edge: var(--blaze-border);
+  --color-edge-strong: var(--blaze-border-strong);
+
+  --color-muted: var(--blaze-text-muted);
+  --color-faint: var(--blaze-text-faint);
+
+  --color-accent: var(--blaze-accent);
+  --color-accent-strong: var(--blaze-accent-strong);
+  --color-accent-dim: var(--blaze-accent-dim);
+
+  --color-alert: var(--blaze-alert);
+  --color-alert-dim: var(--blaze-alert-dim);
+  --color-ok: var(--blaze-ok);
+  --color-ok-dim: var(--blaze-ok-dim);
+  --color-warn: var(--blaze-warn);
+  --color-info: var(--blaze-info);
+
+  --font-sans: var(--blaze-font-sans);
+  --font-mono: var(--blaze-font-mono);
+}
+
+body {
+  background: var(--blaze-bg);
+  color: var(--blaze-text);
+  font-family: var(--blaze-font-sans);
+}
