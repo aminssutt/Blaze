@@ -467,7 +467,75 @@ class ScenarioPipeline(IncidentPipeline):
             value = slim.get(key)
             if isinstance(value, list) and len(value) > 6:
                 slim[key] = value[:6]
+        slim["roads"] = [
+            {
+                key: road.get(key)
+                for key in (
+                    "road_id", "name", "status", "allowed_vehicle_types",
+                    "restrictions", "corrected_by_event", "corrects_event_id",
+                )
+                if key in road
+            }
+            for road in slim.get("roads") or []
+            if isinstance(road, Mapping)
+        ]
         return slim
+
+    _BULKY_TOOL_KEYS = ("geometry", "points", "coordinates", "polyline", "path", "steps")
+
+    def _planner_tool_call(self, tool_name, arguments):  # type: ignore[override]
+        """Parent behavior + geometry pruning (8k window budget, issue #53).
+
+        Tool-round results are appended verbatim to the planner messages; a
+        routed geometry (hundreds of points) can push the FINAL generation or
+        its repair attempt past the window. The planner consumes road ids,
+        distances and statuses — never raw polylines — so bulky coordinate
+        arrays are replaced by a count marker. The audit log keeps the full
+        result (pruning happens on the returned copy only).
+        """
+        import copy
+        import json as _json
+
+        result = super()._planner_tool_call(tool_name, arguments)
+        try:
+            if len(_json.dumps(result, default=str)) <= 1500:
+                return result
+            pruned = copy.deepcopy(dict(result))
+
+            def _prune(node: Any) -> Any:
+                if isinstance(node, dict):
+                    return {
+                        k: (
+                            f"<pruned: {len(v)} points>"
+                            if k in self._BULKY_TOOL_KEYS and isinstance(v, (list, str))
+                            else _prune(v)
+                        )
+                        for k, v in node.items()
+                    }
+                if isinstance(node, list):
+                    return [_prune(item) for item in node[:20]]
+                return node
+
+            return _prune(pruned)
+        except Exception:  # pragma: no cover — never break the tool round
+            return result
+
+    def _revision_context(self, plan, review):  # type: ignore[override]
+        """Parent revision context with slimmed unit actions (8k budget)."""
+        context = super()._revision_context(plan, review)
+        context["unit_actions"] = [
+            {
+                key: action.get(key)
+                for key in (
+                    "action_id", "unit_id", "action_type", "route",
+                    "objective", "summary", "human_approval_required",
+                )
+                if key in action
+            }
+            for action in context.get("unit_actions", [])
+            if isinstance(action, Mapping)
+        ]
+        return context
 
     async def _infer_audio(self, item: Mapping[str, Any]) -> None:
         """Radio-intelligence INFERENCE only (no state machine calls) —
