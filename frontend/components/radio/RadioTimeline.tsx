@@ -143,7 +143,7 @@ export default function RadioTimeline({ className }: PanelComponentProps) {
       live={audios.some((a) => a.status === "transcribing")}
       empty={audios.length === 0}
       emptyLabel="aucun message radio…"
-      emptyHint="alimenté par audio.received / transcript.ready"
+      emptyHint="audios du terrain + transcriptions — dès le premier message reçu"
     >
       <ol className="flex flex-col gap-1.5">
         {audios.map((audio) => {

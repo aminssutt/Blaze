@@ -282,7 +282,7 @@ export default function TacticalPlanPanel({ className }: PanelComponentProps) {
       }
       empty={!displayed}
       emptyLabel="aucun plan…"
-      emptyHint="alimenté par plan.draft.ready"
+      emptyHint="plan d'action proposé par le système — après la synthèse de situation"
     >
       {displayed && (
         <div

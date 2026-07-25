@@ -99,7 +99,7 @@ export default function ApprovalGate({ className }: PanelComponentProps) {
       tone={approvalRequested ? "accent" : dispatchUnlocked ? "ok" : "default"}
       empty={!approvalRequested && !approval}
       emptyLabel="aucune validation demandée…"
-      emptyHint="alimenté par approval.requested / approval.received"
+      emptyHint="vérification et envoi du plan — dès que la revue de sécurité est passée"
     >
       <div className="flex flex-col gap-2">
         {decisionPending && (

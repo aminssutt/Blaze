@@ -172,7 +172,7 @@ export default function AgentTracePanel({ className }: PanelComponentProps) {
       live={activeAgentId !== null}
       empty={agentRuns.length === 0 && toolCalls.length === 0}
       emptyLabel="aucune activité agent…"
-      emptyHint="alimenté par *_agent.started / tool.call.*"
+      emptyHint="raisonnement des agents + appels d'outils — dès le début de l'analyse"
     >
       <div
         ref={bodyRef}

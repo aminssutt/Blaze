@@ -323,7 +323,7 @@ export default function SafetyCriticPanel({ className }: PanelComponentProps) {
       }
       empty={safetyReviews.length === 0 && !reviewing}
       emptyLabel="aucune revue…"
-      emptyHint="alimenté par safety_review.started / safety_review.ready"
+      emptyHint="contrôle de sécurité du plan proposé — avant la demande de validation"
     >
       <div className="flex flex-col gap-2">
         <HeroStatus

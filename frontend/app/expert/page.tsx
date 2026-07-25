@@ -31,7 +31,7 @@
  */
 
 import { useEffect } from "react";
-import { useSessionControls } from "@/lib/session";
+import { useIncidentState, useSessionControls } from "@/lib/session";
 import HeaderBar from "@/components/HeaderBar";
 import PlayerBar from "@/components/PlayerBar";
 import SystemBanners from "@/components/banners/SystemBanners";
@@ -51,8 +51,31 @@ import NvidiaMetricsPanel from "@/components/metrics/NvidiaMetricsPanel";
 /** Stacked below xl, a column of the single-screen grid at xl and up. */
 const COLUMN = "flex min-w-0 flex-col gap-2 xl:min-h-0";
 
+/**
+ * Ticket #121 — zone banner: a discreet one-line header naming the business
+ * zone a column belongs to, so any operator reads the room in order:
+ * SOURCES → SITUATION → DÉCISION. Pure layout furniture (no store access),
+ * so it lives here with the placement it annotates.
+ */
+function ZoneBanner({ label, tagline }: { label: string; tagline: string }) {
+  return (
+    <div className="flex min-w-0 shrink-0 items-baseline gap-1.5 rounded-sm border border-edge bg-surface px-2 py-1">
+      <span className="whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
+        {label}
+      </span>
+      <span className="min-w-0 truncate font-mono text-[10px] text-faint">
+        — {tagline}
+      </span>
+    </div>
+  );
+}
+
 export default function Home() {
   const controls = useSessionControls();
+  // #121 — the DECISION column becomes the visual call to action while the
+  // commander's decision is pending (approval.requested seen, none received).
+  const { approvalRequested, approval } = useIncidentState();
+  const decisionPending = approvalRequested && !approval;
 
   // Arm the player on mount: loads + validates the mock stream (paused at
   // event 0) so the jump index and totals are ready before the first Play.
@@ -91,18 +114,35 @@ export default function Home() {
       >
         {/* left — the radio stream becoming structured facts */}
         <div className={COLUMN}>
+          <ZoneBanner label="📡 Sources" tagline="ce que le terrain rapporte" />
           <RadioTimeline className="xl:flex-1" />
           <RadioEventCards className="xl:flex-1" />
         </div>
 
         {/* centre — the dominant tactical picture and the plan it drives */}
         <div className={COLUMN}>
+          <ZoneBanner
+            label="🗺️ Situation"
+            tagline="ce que le système comprend"
+          />
           <TacticalMap className="xl:flex-[3]" />
           <TacticalPlanPanel className="xl:flex-[2]" />
         </div>
 
-        {/* right — the three on-stage moments, top to bottom */}
-        <div className={COLUMN}>
+        {/* right — the three on-stage moments, top to bottom. #121: the whole
+            commander zone carries a dim amber tint, escalating to a pulsing
+            call-to-action glow while the commander's decision is pending. */}
+        <div
+          className={`${COLUMN} rounded-md border p-1.5 ${
+            decisionPending
+              ? "blaze-cta-pulse border-accent bg-accent-dim/15"
+              : "border-accent-dim/60 bg-accent-dim/10"
+          }`}
+        >
+          <ZoneBanner
+            label="🎯 Décision"
+            tagline="ce que le commandant valide"
+          />
           <SafetyCriticPanel className="xl:flex-[3]" />
           <ApprovalGate className="xl:flex-[2]" />
           <DispatchPanel className="xl:flex-[3]" />

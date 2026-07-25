@@ -80,3 +80,29 @@ body {
 .blaze-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--blaze-text-faint);
 }
+
+/*
+ * Ticket #121 — call-to-action pulse for the DECISION column while the
+ * commander's approval is pending: a soft amber glow breathing around the
+ * whole zone, loud enough to pull the eye, calm enough for a control room.
+ */
+@keyframes blaze-cta-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 10px 0 rgba(245, 158, 11, 0.12);
+  }
+  50% {
+    box-shadow: 0 0 26px 2px rgba(245, 158, 11, 0.35);
+  }
+}
+
+.blaze-cta-pulse {
+  animation: blaze-cta-pulse 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blaze-cta-pulse {
+    animation: none;
+    box-shadow: 0 0 18px 1px rgba(245, 158, 11, 0.25);
+  }
+}
