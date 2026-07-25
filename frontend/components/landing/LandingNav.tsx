@@ -60,7 +60,7 @@ export default function LandingNav() {
         </div>
 
         <Link
-          href="/demo"
+          href="/workflow"
           className="rounded-md border px-3.5 py-1.5 font-mono text-[12px] font-semibold uppercase tracking-[0.12em]"
           style={{
             borderColor: "var(--blaze-accent)",

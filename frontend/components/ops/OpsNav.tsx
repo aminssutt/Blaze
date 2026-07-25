@@ -1,11 +1,12 @@
-// Operator navigation — one bar, three audiences:
-//   Workflow   /workflow — THE agent-control view (asked by Lakhdar): pipeline
-//                          graph + per-node terminals, the default
+// Operator navigation — one bar, three views:
+//   Workflow   /workflow — THE agent-control view: pipeline graph + per-node
+//                          terminals, the default
 //   Legacy     /expert   — the previous full control room, kept accessible
-//   System     /system   — is the machine healthy: vLLM, GPU, STT/TTS
+//   Settings   /settings — configuration and machine/AI health
 //
 // Pure navigation furniture on the control-room tokens; the pages own their
-// content. /demo (guided cinematic) keeps living outside these tabs.
+// content. The bar spans the page and centers its pill so it looks identical
+// wherever it is mounted.
 
 "use client";
 
@@ -15,57 +16,57 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { href: "/workflow", label: "Workflow", title: "Agent control — pipeline graph and per-node terminals" },
   { href: "/expert", label: "Legacy", title: "The previous control room (detailed view)" },
-  { href: "/system", label: "System", title: "Machine and AI health" },
+  { href: "/settings", label: "Settings", title: "Configuration and machine health" },
 ] as const;
 
 export default function OpsNav() {
   const pathname = usePathname();
 
   return (
-    <nav
-      aria-label="Operator views"
-      className="flex shrink-0 items-center gap-1 rounded-full border border-edge bg-surface px-3 py-1.5"
-    >
-      <Link
-        href="/"
-        className="mr-2 flex items-center gap-1.5 px-1 font-mono text-[12px] font-bold tracking-[0.2em]"
-        style={{ color: "var(--blaze-accent)" }}
-        title="BLAZE home"
+    <div className="flex shrink-0 justify-center">
+      <nav
+        aria-label="Operator views"
+        className="flex h-10 items-center rounded-full border border-edge bg-surface pl-4 pr-1.5"
       >
-        BLAZE<span aria-hidden>▲</span>
-      </Link>
+        <Link
+          href="/"
+          className="flex items-center gap-1.5 font-mono text-[12px] font-bold tracking-[0.2em]"
+          style={{ color: "var(--blaze-accent)" }}
+          title="BLAZE home"
+        >
+          BLAZE<span aria-hidden>▲</span>
+        </Link>
 
-      <div className="flex items-center gap-1" role="tablist">
-        {TABS.map((tab) => {
-          const active = pathname === tab.href;
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              title={tab.title}
-              aria-current={active ? "page" : undefined}
-              className={`rounded-full border px-3.5 py-1 text-[12px] font-medium transition-colors ${
-                active
-                  ? "border-accent bg-accent-dim/20"
-                  : "border-transparent hover:border-edge-strong"
-              }`}
-              style={{
-                color: active ? "var(--blaze-accent)" : "var(--blaze-text-muted)",
-              }}
-            >
-              {tab.label}
-            </Link>
-          );
-        })}
-      </div>
+        <span
+          aria-hidden
+          className="mx-3 h-4 w-px"
+          style={{ background: "var(--blaze-border-strong)" }}
+        />
 
-      <Link
-        href="/demo"
-        className="ml-auto px-1 text-[11px] hover:underline"
-        style={{ color: "var(--blaze-text-faint)" }}
-      >
-        guided demo →
-      </Link>
-    </nav>
+        <div className="flex items-center gap-1">
+          {TABS.map((tab) => {
+            const active = pathname === tab.href;
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                title={tab.title}
+                aria-current={active ? "page" : undefined}
+                className={`rounded-full border px-3.5 py-1 text-[12px] font-medium transition-colors ${
+                  active
+                    ? "border-accent bg-accent-dim/20"
+                    : "border-transparent hover:border-edge-strong"
+                }`}
+                style={{
+                  color: active ? "var(--blaze-accent)" : "var(--blaze-text-muted)",
+                }}
+              >
+                {tab.label}
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+    </div>
   );
 }

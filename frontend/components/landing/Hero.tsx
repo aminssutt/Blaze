@@ -100,7 +100,7 @@ export default function Hero() {
           transition={{ duration: 0.6, delay: 0.35 }}
         >
           <Link
-            href="/demo"
+            href="/workflow"
             className="rounded-md border px-5 py-2.5 font-mono text-sm font-semibold uppercase tracking-[0.12em] transition-colors"
             style={{
               background: "var(--blaze-accent)",
@@ -127,7 +127,7 @@ export default function Hero() {
             See how it works ↓
           </a>
           <span className="font-mono text-[11px]" style={{ color: "var(--blaze-text-faint)" }}>
-            guided live demo · 5 audios · expert control room inside
+            live demo · 5 audios · expert control room inside
           </span>
         </motion.div>
       </div>
