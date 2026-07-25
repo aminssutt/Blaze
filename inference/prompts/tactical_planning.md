@@ -81,57 +81,28 @@ given, containing:
 10. **Re-planning.** When a `PREVIOUS_PLAN` is provided, produce the next revision of
     the SAME plan: keep actions that remain valid, change only what the new events
     justify, and explain superseded choices in `rejected_options` or `uncertainties`.
-11. **Complete movement orders.** (Documented fix for issue #52, live runs.) Any
-    action that moves a unit — retreat, reroute, reconnaissance approach — MUST carry
-    an explicit `route` AND `destination` taken from the road graph / known locations
-    (e.g. retreat via `north-access` to `water-point-2`). A retreat "to a staging
-    area to be designated later" is not an order. Use JSON `null` (never the string
-    "null") for `route`/`destination` ONLY when the action truly involves no
-    movement (e.g. hold_position at the current location).
-12. **Quantified safety parameters and retreat-first.** (Documented fix for issue
-    #52, live runs.) An engaged or field-holding unit ALWAYS gets an explicit retreat
-    option in the same plan (a `retreat` action or a stated `retreat_route`). Any
-    stand-off/reconnaissance tasking near a reported hazard states an explicit
-    minimum distance in the `instruction` (use the 300 m hazmat default when nothing
-    better is known) and an abort criterion. When two units share a road, state the
-    deconfliction (order of march or timing) in the `reason`.
-13. **Minimal defensive plan, no self-created dependencies.** (Documented fix for
-    issue #52, live runs.) With only initial, unconfirmed reports, produce the
-    MINIMAL defensive plan:
-    - Route retreats on roads the ROAD_GRAPH already marks open and compatible with
-      the unit's vehicle type, citing the road graph as evidence. Do NOT task
-      another unit to "confirm" a route the graph already rates for that vehicle —
-      that manufactures a dependency between your own actions and delays the
-      retreat.
-    - Keep reconnaissance units at their CURRENT position (or move them AWAY from
-      the hazard) observing from an explicit stand-off distance. Never move any
-      unit TOWARD a reported-but-unassessed hazard.
-    - Never make one unit's safety conditional on another unit completing a task
-      first.
-    - Action-type semantics of the mechanical safety rules: `hold_position` and
-      `defend` mean ENGAGED ON SCENE and mechanically REQUIRE a retreat option for
-      that unit in the same plan (a separate `retreat` action, or an explicit
-      `retreat_route: "<road_id>"` field inside the action object). For a unit that
-      is simply waiting at a safe location, use `standby` or `monitor` instead —
-      never `hold_position`.
-14. **HARD RULE — explicit retreat option on EVERY tasked unit.** (Structural fix
-    for issue #52 after repeated live rejections.) The Safety Critic's rule engine
-    reads unit actions MECHANICALLY: prose does not count. EVERY unit action,
-    whatever its type (`suppression`, `reconnaissance`, `confirm_access`,
-    `standby`, `hold_position`, ...), MUST include a machine-readable retreat
-    option: a `"retreat_route": "<road_id>"` field inside the action object, using
-    an open road compatible with the unit's vehicle type. If you cannot emit that
-    extra field, express the retreat as a SECOND action of type `retreat` for the
-    same unit, listed AFTER its main action. A plan where an engaged unit has no
-    machine-readable retreat option is AUTOMATICALLY rejected by the Safety Critic
-    — no exception.
+11. **HARD RULES — issue #52, learned from live rejections.** The Safety Critic's
+    rule engine reads action FIELDS mechanically; prose does not count.
+    - Movement actions carry an explicit `route` AND `destination` (road/location
+      ids from ROAD_GRAPH, e.g. retreat via `north-access` to `water-point-2`).
+      JSON `null` — never the string "null" — only for actions without movement.
+    - NEVER use `hold_position` or `defend` unless the unit is truly engaged at the
+      fire AND the same plan gives it a retreat (they mechanically require one). A
+      unit waiting somewhere safe gets `standby` or `monitor` instead.
+    - NEVER move a unit TOWARD a reported, unassessed hazard. Reconnaissance is
+      done from the unit's CURRENT position or further away, with an explicit
+      minimum stand-off distance in the `instruction` (300 m default) and an abort
+      criterion; state the retreat direction in the `instruction` too.
+    - Retreat immediately on roads ROAD_GRAPH rates open and vehicle-compatible,
+      citing the road graph. Do NOT task another unit to "confirm" such a route,
+      and never make one unit's safety depend on another unit finishing a task.
 
-    Few-shot — `confirm_access` action WITH its retreat option:
+    Example `confirm_access` action (note stand-off + retreat in the instruction):
 
     ```json
     {"unit_id": "charlie-1", "action_type": "confirm_access",
-     "instruction": "Charlie 1, confirmez l'état de la D17 depuis l'intersection nord sans vous engager au-delà ; en cas de danger, repli immédiat par North Access vers le point d'eau 2.",
-     "route": "d17", "destination": "d17", "retreat_route": "north-access",
+     "instruction": "Charlie 1, confirmez l'état de la D17 depuis votre position actuelle à l'intersection nord, sans vous engager au-delà ; en cas de danger, repli immédiat par North Access vers le point d'eau 2.",
+     "route": "d17", "destination": "d17",
      "reason": "Radio reports D17 blocked for CCF; visual confirmation from a safe standoff resolves the conflict with the road graph.",
      "priority": "high", "evidence_ids": ["<a real RadioEvent id>"],
      "confidence": 0.8, "human_approval_required": true,

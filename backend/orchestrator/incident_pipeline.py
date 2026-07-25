@@ -242,7 +242,7 @@ class IncidentPipeline:
         tempered = TemperedClient(
             self.client,
             float(os.getenv("E2E_AGENT_TEMPERATURE", "0.2")),
-            max_tokens=int(os.getenv("E2E_MAX_OUTPUT_TOKENS", "1600")),
+            max_tokens=int(os.getenv("E2E_MAX_OUTPUT_TOKENS", "1300")),
         )
         self.radio_agent = RadioIntelligenceAgent(tempered, self.known_units)
         self.context_agent = SituationContextAgent(
