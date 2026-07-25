@@ -16,8 +16,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@splinetool/react-spline": "^4.1.0",
-    "@splinetool/runtime": "^1.12.98",
     "motion": "^12.42.2",
     "next": "16.2.11",
     "react": "19.2.4",
