@@ -294,8 +294,19 @@ class ScenarioPipeline(IncidentPipeline):
             "incident_id": plan.get("incident_id"),
             "version": plan.get("version"),
             "summary": plan.get("summary"),
-            "objectives": plan.get("objectives", []),
-            "unit_actions": plan.get("unit_actions", []),
+            "objectives": [str(o)[:220] for o in plan.get("objectives", [])[:5]],
+            "unit_actions": [
+                {
+                    key: action.get(key)
+                    for key in (
+                        "action_id", "unit_id", "action_type", "route",
+                        "objective", "summary", "human_approval_required",
+                    )
+                    if key in action
+                }
+                for action in plan.get("unit_actions", [])
+                if isinstance(action, Mapping)
+            ],
             "replan_reason": reason,
             "new_radio_events": [
                 {
@@ -322,9 +333,10 @@ class ScenarioPipeline(IncidentPipeline):
         cycle_info: Dict[str, Any] = {"cycle": cycle, "plan_versions": [], "reviews": []}
         self.cycles.append(cycle_info)
 
+        planner_snapshot = self._planner_snapshot(snapshot)
         with self._stage(f"planning_{cycle}_v1"):
             plan = await self.planning_agent.draft_plan(
-                self._planner_events(), snapshot, self.units_doc,
+                self._planner_events(), planner_snapshot, self.units_doc,
                 previous_plan=previous_context,
             )
         self.plans.append(plan.to_dict())
@@ -365,7 +377,7 @@ class ScenarioPipeline(IncidentPipeline):
             previous = self._revision_context(plan.to_dict(), review)
             with self._stage(f"planning_{cycle}_v{revision + 1}"):
                 plan = await self.planning_agent.draft_plan(
-                    self._planner_events(), snapshot, self.units_doc,
+                    self._planner_events(), planner_snapshot, self.units_doc,
                     previous_plan=previous,
                 )
             self.plans.append(plan.to_dict())
@@ -417,6 +429,33 @@ class ScenarioPipeline(IncidentPipeline):
 
     def _planner_events(self) -> List[Dict[str, Any]]:
         return [self._slim_event(e) for e in self.all_radio_events]
+
+    @staticmethod
+    def _planner_snapshot(snapshot: Mapping[str, Any]) -> Dict[str, Any]:
+        """Compact snapshot view for the PLANNER prompt only (8k window budget).
+
+        Live finding (#53, run 2): by planning cycle B the authoritative
+        snapshot (wind update + D17 correction + provenance trail) no longer
+        fits the planner prompt (HTTP 400). The planner does not need the
+        provenance trail or the event-id ledger; free-text lists are bounded
+        keeping the MOST RECENT entries (corrections/confirmations are appended
+        last). The safety critic and the report keep the FULL snapshot.
+        """
+        import copy
+
+        slim = copy.deepcopy(dict(snapshot))
+        slim.pop("provenance", None)
+        slim.pop("radio_events", None)
+        for key in ("known_facts", "uncertain_facts", "conflicts", "missing_information"):
+            slim[key] = [str(x)[:220] for x in (slim.get(key) or [])[-10:]]
+        weather = slim.get("weather")
+        if isinstance(weather, dict) and isinstance(weather.get("radio_wind_update"), dict):
+            weather["radio_wind_update"].pop("reported_facts", None)
+        for key in ("buildings_and_parcels", "fire_hotspots"):
+            value = slim.get(key)
+            if isinstance(value, list) and len(value) > 6:
+                slim[key] = value[:6]
+        return slim
 
     async def _infer_audio(self, item: Mapping[str, Any]) -> None:
         """Radio-intelligence INFERENCE only (no state machine calls) —
@@ -643,6 +682,7 @@ class ScenarioPipeline(IncidentPipeline):
             )
         snapshot = self._merge_seeded_roads(snapshot)
         self._register_events(snapshot, self.all_radio_events)
+        self._debug_snapshot = snapshot  # failure-report hook
         machine.submit_situation_snapshot(dict(snapshot))
 
         self._open_window("planning_cycle_a")
