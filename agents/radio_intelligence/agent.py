@@ -14,7 +14,9 @@ DETERMINISTIC post-LLM guardrails (plain code, no LLM):
 4. ``is_correction=true`` requires a non-null ``corrects_event_id`` — if the model
    left it null but a matching earlier event exists in ``recent_context``, the target
    is resolved deterministically (same normalized location, else same event, most
-   recent first) and an uncertainty is recorded;
+   recent first) and an uncertainty is recorded; conversely, ``is_correction=false``
+   forces ``corrects_event_id`` to null (a dangling link would let downstream
+   consumers silently fuse/downgrade the target event) with an uncertainty;
 5. every event is finally validated against ``radio_event.schema.json`` — an event
    that still fails raises :class:`RadioEventValidationError`.
 
@@ -368,7 +370,16 @@ class RadioIntelligenceAgent:
                         "correction: aucun event correspondant trouvé dans le contexte récent"
                     )
         else:
-            event["corrects_event_id"] = event.get("corrects_event_id") or None
+            # A non-correction event must NEVER keep a link to a prior event:
+            # downstream consumers (Agent 2) would silently fuse/overwrite the
+            # target (e.g. downgrade a confirmed event). Strip it and flag it.
+            dangling = event.get("corrects_event_id")
+            if dangling:
+                uncertainties.append(
+                    "corrects_event_id fourni sans is_correction=true — lien supprimé "
+                    f"(cible proposée: '{dangling}')"
+                )
+            event["corrects_event_id"] = None
 
         event["uncertainties"] = uncertainties
         event["facts"] = [str(f) for f in event.get("facts") or []]
