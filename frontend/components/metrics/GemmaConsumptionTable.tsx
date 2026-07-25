@@ -1,4 +1,4 @@
-// System view — Gemma consumption per agent (asked by Lakhdar).
+// Settings view — Gemma consumption per agent (asked by Lakhdar).
 //
 // Two panels, both derived 100% from the incident store (i.e. from the event
 // stream — mock replay or live SSE, the component never knows which):
@@ -430,7 +430,7 @@ function BudgetCard({ state }: { state: IncidentState }) {
 /* -------------------------------------------------------------------------- */
 
 /**
- * The "Gemma consumption" section of /system: per-agent table + scenario
+ * The "Gemma consumption" section of /settings: per-agent table + scenario
  * budget card. The page owns placement (className forwarded as-is).
  */
 export default function GemmaConsumptionTable({
