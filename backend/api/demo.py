@@ -8,6 +8,7 @@ system to IDLE with the sequence restarting at 1.
 
 import asyncio
 import contextlib
+import os
 from enum import StrEnum
 
 from backend.streaming.bus import EventBus
@@ -48,6 +49,10 @@ class DemoController:
 
     async def set_network_mode(self, mode: str) -> None:
         previous, self.network_mode = self.network_mode, mode
+        # Propagate to the process env: every tool adapter (weather, elevation,
+        # firms, osm) resolves its live/cached mode from NETWORK_MODE at call
+        # time, so flipping offline immediately forces cache everywhere.
+        os.environ["NETWORK_MODE"] = mode
         if self.state is DemoState.RUNNING and previous != mode:
             await self.bus.publish(
                 "network.mode.changed",
