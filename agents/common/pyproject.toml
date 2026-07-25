@@ -1,0 +1,30 @@
+[project]
+name = "blaze-agents-common"
+version = "0.1.0"
+description = "BLAZE shared Gemma inference client — OpenAI-compatible vLLM calls, retries, structured-output repair, call accounting"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.27",
+    "pydantic>=2.6",
+    "jsonschema>=4.22",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "respx>=0.21",
+]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+# Shared library imported as `agents.common.*` from the repo root (namespace package).
+# Installing this project just pulls the dependencies; run pytest from agents/common.
+[tool.setuptools]
+packages = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
