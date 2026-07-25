@@ -336,9 +336,13 @@ class TacticalPlanningAgent:
         def block(title: str, payload: Any) -> str:
             return f"{title}:\n{json.dumps(payload, ensure_ascii=False, indent=2)}"
 
+        # The road entries are rendered ONCE, in the dedicated ROAD_GRAPH
+        # block the system prompt references — duplicating them inside
+        # SITUATION_SNAPSHOT wasted ~250 tokens of the 8k window (issue #53).
+        snapshot_view = {k: v for k, v in dict(snapshot).items() if k != "roads"}
         parts = [
             block("RADIO_EVENTS (chronological)", list(radio_events)),
-            block("SITUATION_SNAPSHOT", dict(snapshot)),
+            block("SITUATION_SNAPSHOT", snapshot_view),
             block("UNITS", units),
             block("ROAD_GRAPH", snapshot.get("roads", [])),
         ]

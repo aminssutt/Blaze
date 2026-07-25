@@ -482,8 +482,16 @@ class GemmaClient:
                 max_repairs + 1,
                 last_error,
             )
+            # The rejected output is echoed back as CONTEXT only (validation
+            # already ran on the full text), so it is clipped: a degenerate
+            # generation (e.g. a whitespace loop up to max_tokens) would
+            # otherwise push the repair prompt past the model window and turn
+            # one bad output into an unrecoverable HTTP 400 (issue #53).
+            echoed = last_output or ""
+            if len(echoed) > 1500:
+                echoed = echoed[:1500] + " …[output truncated for repair]"
             work_messages = work_messages + [
-                {"role": "assistant", "content": last_output},
+                {"role": "assistant", "content": echoed},
                 {
                     "role": "user",
                     "content": (
