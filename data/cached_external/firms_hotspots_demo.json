@@ -1,0 +1,19 @@
+{
+  "tool_call_id": "firms-af514f97dbd2",
+  "tool_name": "firms_hotspots",
+  "status": "success",
+  "data": {
+    "bbox_wsen": "3.70,43.42,3.80,43.49",
+    "days": 1,
+    "source": "VIIRS_SNPP_NRT",
+    "hotspot_count": 0,
+    "hotspots": []
+  },
+  "source_type": "live_public",
+  "source_name": "nasa-firms",
+  "retrieved_at": "2026-07-25T09:55:54+00:00",
+  "data_timestamp": null,
+  "is_cached": false,
+  "staleness_seconds": 0,
+  "error": null
+}
