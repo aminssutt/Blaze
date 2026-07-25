@@ -5,6 +5,12 @@ import uuid
 from datetime import datetime, timezone
 
 
+# Queue sentinel: tells live subscribers the sequence counter restarted, so
+# their dedup guard must reset — otherwise every post-reset event (seq 1, 2, …)
+# is silently dropped and connected clients go dead after a demo reset.
+_RESTART = object()
+
+
 class EventBus:
     def __init__(self, incident_id: str) -> None:
         self.incident_id = incident_id
@@ -62,6 +68,9 @@ class EventBus:
                     yield envelope
             while True:
                 envelope = await queue.get()
+                if envelope is _RESTART:
+                    last_sent = 0
+                    continue
                 if envelope["sequence"] > last_sent:
                     last_sent = envelope["sequence"]
                     yield envelope
@@ -73,3 +82,5 @@ class EventBus:
         async with self._lock:
             self.history.clear()
             self._sequence = 0
+            for queue in self._subscribers:
+                queue.put_nowait(_RESTART)

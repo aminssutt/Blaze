@@ -153,10 +153,40 @@ Final narration:
 
 ## Reset & rerun procedure
 
-> **TODO** — to be completed once the reset endpoint and demo controller are implemented. Must cover:
->
-> - [ ] TODO: single-command / single-click scenario reset (backend state machine back to `IDLE`, plan versions cleared, event stream reset)
-> - [ ] TODO: verification checklist before going on stage (vLLM health check, GPU visible, faster-whisper model loaded, Piper voice loaded, caches present)
-> - [ ] TODO: how to switch clean/radio audio fallback mid-demo
-> - [ ] TODO: how to activate each fallback level (cached data, reference transcripts, pre-generated TTS, precomputed agent events, backup video)
-> - [ ] TODO: expected total rerun time and how many consecutive reruns were tested
+**Reset** = one click (⟲ in the demo row) or one call — no restart, no manual cleanup:
+
+```bash
+curl -X POST http://localhost:8080/incident/reset
+```
+
+What it guarantees (#58, covered by `backend/tests/test_rerun_stability.py`):
+
+- Demo controller back to `IDLE`, event sequence restarts at 1, bus history cleared.
+- Plan store wiped: all plan versions **and** the approval-decision audit trail.
+- Background dev publishers (mock replay, audio ingest) are cancelled **before** the
+  bus resets, so no pre-reset event can leak into the next run.
+- Connected SSE clients survive: subscribers are told the sequence restarted, so the
+  next run streams to already-open tabs (the frontend store rebuilds on the
+  non-increasing sequence, per the #39 adapter contract). A second viewer tab no
+  longer goes silent after a reset.
+- Reset completes in well under a second (asserted `< 10 s` in tests).
+
+**Tested**: 5 consecutive full runs via the real API with a reset between each —
+identical event fingerprints (sequence + type) on every run, state verified clean
+after each reset. Runs at replay speed are deterministic by construction.
+
+Known flakiness & mitigations:
+
+- **Dev replay only**: the scripted `approval.received` ("Incident Commander
+  (demo)") arrives late in the replayed stream and overwrites the human decision
+  on screen (noted in #114). Inherent to replaying the frozen scenario; disappears
+  with the real orchestrator. Mitigation on stage: approve *after* the stream
+  completes, or narrate over it.
+- Operator toggles (clean/radio audio, online/offline) **intentionally survive
+  reset** — they are stage controls, not run state. Check them before restarting.
+- `NETWORK_MODE` is process-wide: if the previous run ended offline, flip it back
+  online before the next run unless the blackout beat is wanted from the start.
+
+> Pre-stage verification checklist (vLLM health, GPU visible, models loaded,
+> caches present) and per-level fallback activation: **TODO — final rehearsal
+> pass** (#59 fallbacks + #62 rehearsal own these).
