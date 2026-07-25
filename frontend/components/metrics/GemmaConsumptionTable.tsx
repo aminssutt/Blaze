@@ -1,14 +1,14 @@
-// Vue Système — consommation Gemma par agent (demande Lakhdar).
+// System view — Gemma consumption per agent (asked by Lakhdar).
 //
 // Two panels, both derived 100% from the incident store (i.e. from the event
 // stream — mock replay or live SSE, the component never knows which):
 //
-//   1. "Consommation Gemma par agent" — one row per pipeline agent, built by
+//   1. "Gemma consumption per agent" — one row per pipeline agent, built by
 //      grouping `state.agentRuns` (started/finished by the reducer from the
 //      `*_agent.started` → completion events). Latency = finished_at −
 //      started_at of the SAME run (the reducer already correlates runs per
 //      agent/audio); the share bar is that agent's busy time over the total.
-//   2. "Budget scénario" — elapsed incident time (incident.started → last
+//   2. "Scenario budget" — elapsed incident time (incident.started → last
 //      event), total Gemma activations observed in the stream, plus the
 //      counters the `metric.updated` payload actually carries.
 //
@@ -152,7 +152,7 @@ function AgentStatusCell({ row }: { row: AgentConsumption }) {
     return (
       <span className="flex items-center gap-1.5 text-info">
         <StatusDot tone="running" pulse />
-        en cours
+        running
       </span>
     );
   }
@@ -160,14 +160,14 @@ function AgentStatusCell({ row }: { row: AgentConsumption }) {
     return (
       <span className="flex items-center gap-1.5 text-ok">
         <StatusDot tone="ok" />
-        terminé
+        done
       </span>
     );
   }
   return (
     <span className="flex items-center gap-1.5 text-faint">
       <StatusDot tone="idle" />
-      en attente
+      waiting
     </span>
   );
 }
@@ -182,8 +182,8 @@ function ConsumptionTable({ state }: { state: IncidentState }) {
     <Panel
       id="gemma-consumption"
       className="min-h-[16rem]"
-      title="Consommation Gemma par agent"
-      subtitle="latences dérivées des horodatages du flux (started → ready)"
+      title="Gemma consumption per agent"
+      subtitle="latencies derived from stream timestamps (started → ready)"
       live={totalRuns > 0}
       right={
         placeholder ? (
@@ -197,8 +197,8 @@ function ConsumptionTable({ state }: { state: IncidentState }) {
         ) : undefined
       }
       empty={totalRuns === 0}
-      emptyLabel="aucune activation agent…"
-      emptyHint="la table se remplit dès le premier *_agent.started du flux"
+      emptyLabel="no agent activation yet…"
+      emptyHint="the table fills from the first *_agent.started event"
     >
       <div className="overflow-x-auto">
         <table className="w-full border-collapse font-mono text-[11px]">
@@ -207,21 +207,21 @@ function ConsumptionTable({ state }: { state: IncidentState }) {
               className="border-b border-edge text-left text-[10px] uppercase tracking-wider text-faint"
             >
               <th className="py-1 pr-3 font-normal">agent</th>
-              <th className="py-1 pr-3 text-right font-normal">exéc.</th>
+              <th className="py-1 pr-3 text-right font-normal">runs</th>
               <th
                 className="py-1 pr-3 text-right font-normal"
-                title="moyenne des deltas started → ready du même agent/run"
+                title="mean started → ready delta of the same agent run"
               >
-                latence / exéc.
+                latency / run
               </th>
-              <th className="py-1 pr-3 font-normal">part du temps total</th>
+              <th className="py-1 pr-3 font-normal">share of total time</th>
               <th
                 className="py-1 pr-3 text-right font-normal"
-                title="tokens par agent absents du payload metric.updated — pending live metrics"
+                title="per-agent tokens absent from the metric.updated payload — pending live metrics"
               >
                 tokens
               </th>
-              <th className="py-1 font-normal">statut</th>
+              <th className="py-1 font-normal">status</th>
             </tr>
           </thead>
           <tbody>
@@ -246,8 +246,8 @@ function ConsumptionTable({ state }: { state: IncidentState }) {
                   className={`py-1.5 pr-3 text-right ${row.avgLatencyMs !== null ? "text-foreground" : "text-faint"}`}
                   title={
                     row.avgLatencyMs !== null
-                      ? `${row.measurable}/${row.executions} exécution(s) mesurable(s) · ${Math.round(row.avgLatencyMs)} ms`
-                      : "aucune exécution terminée avec horodatages exploitables"
+                      ? `${row.measurable}/${row.executions} measurable run(s) · ${Math.round(row.avgLatencyMs)} ms`
+                      : "no finished run with usable timestamps yet"
                   }
                 >
                   {fmtMs(row.avgLatencyMs)}
@@ -259,7 +259,7 @@ function ConsumptionTable({ state }: { state: IncidentState }) {
                       max={totalBusyMs}
                       tone="accent"
                       valueLabel={`${Math.round((row.busyMs / totalBusyMs) * 100)} %`}
-                      title={`${fmtMs(row.busyMs)} cumulés sur ${fmtMs(totalBusyMs)} au total`}
+                      title={`${fmtMs(row.busyMs)} busy out of ${fmtMs(totalBusyMs)} total`}
                     />
                   ) : (
                     <span className="text-faint">{DASH}</span>
@@ -267,7 +267,7 @@ function ConsumptionTable({ state }: { state: IncidentState }) {
                 </td>
                 <td
                   className="py-1.5 pr-3 text-right text-faint"
-                  title="tokens par agent absents du payload — pending live metrics"
+                  title="per-agent tokens absent from the payload — pending live metrics"
                 >
                   {DASH}
                 </td>
@@ -280,9 +280,9 @@ function ConsumptionTable({ state }: { state: IncidentState }) {
         </table>
       </div>
       <p className="mt-2 font-mono text-[10px] text-faint">
-        champs absents = « {DASH} » · tokens par agent : pending live metrics
-        (ni le mock ni le collecteur n&apos;exposent encore de compteur par
-        agent)
+        missing fields = &quot;{DASH}&quot; · per-agent tokens: pending live metrics
+        (neither the mock payload nor the collector exposes per-agent
+        counters yet)
       </p>
     </Panel>
   );
@@ -306,10 +306,10 @@ function elapsedMs(state: IncidentState): number | null {
 
 /** Budget rows fed by the metric.updated payload (absent = "—"). */
 const METRIC_ROWS: { key: string; label: string; unit?: "toks" }[] = [
-  { key: "gemma_agent_calls", label: "appels Gemma (compteur métriques)" },
-  { key: "concurrent_requests_peak", label: "pic de concurrence" },
-  { key: "tokens_in_total", label: "tokens prompt (total)" },
-  { key: "tokens_out_total", label: "tokens complétion (total)" },
+  { key: "gemma_agent_calls", label: "Gemma calls (metrics counter)" },
+  { key: "concurrent_requests_peak", label: "concurrency peak" },
+  { key: "tokens_in_total", label: "prompt tokens (total)" },
+  { key: "tokens_out_total", label: "completion tokens (total)" },
   { key: "tokens_per_second", label: "tokens/s", unit: "toks" },
 ];
 
@@ -331,7 +331,7 @@ function BudgetCard({ state }: { state: IncidentState }) {
     <Panel
       id="gemma-budget"
       className="min-h-[16rem]"
-      title="Budget scénario"
+      title="Scenario budget"
       subtitle={note ?? undefined}
       live={state.incidentStatus === "active"}
       right={
@@ -342,8 +342,8 @@ function BudgetCard({ state }: { state: IncidentState }) {
         ) : undefined
       }
       empty={state.events.length === 0}
-      emptyLabel="aucun événement…"
-      emptyHint="temps écoulé et appels Gemma dès incident.started"
+      emptyLabel="no events yet…"
+      emptyHint="elapsed time and Gemma calls from incident.started"
     >
       <div className="flex flex-col gap-2 font-mono">
         {/* hero — the local-GPU proof, same pattern as the NVIDIA cockpit */}
@@ -355,10 +355,10 @@ function BudgetCard({ state }: { state: IncidentState }) {
                 ? "border-alert/60 bg-alert-dim/40"
                 : "border-edge bg-overlay"
           }`}
-          title="cloud_llm_calls — nombre d'appels LLM cloud effectués"
+          title="cloud_llm_calls — number of cloud LLM calls made"
         >
           <span className="text-[10px] uppercase tracking-wider text-muted">
-            Appels LLM cloud
+            Cloud LLM calls
           </span>
           <span
             className={`text-xl font-bold leading-none ${
@@ -373,9 +373,9 @@ function BudgetCard({ state }: { state: IncidentState }) {
           <div className="col-span-2 grid grid-cols-subgrid">
             <dt
               className="truncate text-faint"
-              title="incident.started → dernier événement reçu"
+              title="incident.started → last event received"
             >
-              temps écoulé de l&apos;incident
+              incident elapsed time
             </dt>
             <dd
               className={`text-right ${elapsed !== null ? "text-foreground" : "text-faint"}`}
@@ -387,9 +387,9 @@ function BudgetCard({ state }: { state: IncidentState }) {
           <div className="col-span-2 grid grid-cols-subgrid">
             <dt
               className="truncate text-faint"
-              title="nombre d'événements *_agent.started réduits depuis le flux"
+              title="number of *_agent.started events reduced from the stream"
             >
-              appels Gemma (démarrages observés)
+              Gemma calls (observed agent starts)
             </dt>
             <dd
               className={`text-right ${totalRuns > 0 ? "text-foreground" : "text-faint"}`}
@@ -411,7 +411,7 @@ function BudgetCard({ state }: { state: IncidentState }) {
                   title={
                     rawValue !== undefined && rawValue !== null
                       ? String(rawValue)
-                      : "absent du payload — pending live metrics"
+                      : "absent from the payload — pending live metrics"
                   }
                 >
                   {display}
@@ -430,7 +430,7 @@ function BudgetCard({ state }: { state: IncidentState }) {
 /* -------------------------------------------------------------------------- */
 
 /**
- * The "Consommation Gemma" section of /system: per-agent table + scenario
+ * The "Gemma consumption" section of /system: per-agent table + scenario
  * budget card. The page owns placement (className forwarded as-is).
  */
 export default function GemmaConsumptionTable({

@@ -421,7 +421,7 @@ export default function SystemView() {
             <InstallCard />
           </div>
         </div>
-        {/* Consommation Gemma par agent + budget scénario — 100% event-derived. */}
+        {/* Gemma consumption per agent + scenario budget — 100% event-derived. */}
         <GemmaConsumptionTable />
       </main>
     </div>
