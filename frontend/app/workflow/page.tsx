@@ -1,35 +1,33 @@
 "use client";
 
 /**
- * BLAZE /monitor — the agent-control view (asked by Lakhdar, Astyr pattern).
+ * BLAZE /workflow — the agent-control view (asked by Lakhdar, Astyr pattern).
  *
- * ROUTES — / landing, /simple essentials, /expert full control room (legacy),
- * /system health, /demo guided cinematic. THIS page is the new default way to
- * watch the agents work: a live pipeline graph (services → Gemma agents →
- * HUMAN GATE → dispatch/TTS) + the commander's aside (approval + dispatch),
- * with a per-node overlay (terminal + expert panel) raised on click.
+ * ROUTES — / landing, /expert full control room (legacy), /system health,
+ * /demo guided cinematic. THIS page is the default way to watch the agents
+ * work: a live pipeline graph (services → Gemma agents → HUMAN GATE →
+ * dispatch/TTS) + the commander's aside (approval + dispatch), with a
+ * per-node overlay (terminal + expert panel) raised on click.
  *
  * Everything renders from the SAME incident store as /expert: mock replay or
  * live SSE is chosen by lib/session (StreamModeToggle), the store never knows
  * which — so this page works identically in both modes.
  *
- * LAYOUT — OpsNav, header (incident identity + status chip), demo row
- * (DemoControls + StreamModeToggle + PlayerBar, all reused), then the main
- * row: graph (flex-1) + commander aside (fixed width at xl). The page never
- * scrolls horizontally; at xl it fits one screen like /expert.
+ * LAYOUT — OpsNav, header (incident identity + status chip), minimal control
+ * row (start · reset · speed — Lakhdar's spec), then the main row: graph
+ * (flex-1) + commander aside (fixed width at xl). Never scrolls horizontally.
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { useIncidentState, useSessionControls } from "@/lib/session";
+import { useIncidentState, usePlayerState, useSessionControls } from "@/lib/session";
 import {
   deriveNodeStatuses,
   type MonitorNodeId,
 } from "@/lib/monitorPipeline";
 import OpsNav from "@/components/ops/OpsNav";
-import PlayerBar from "@/components/PlayerBar";
 import SystemBanners from "@/components/banners/SystemBanners";
-import DemoControls from "@/components/controls/DemoControls";
 import StreamModeToggle from "@/components/controls/StreamModeToggle";
+import { PLAYER_SPEEDS, type PlayerSpeed } from "@/lib/streamPlayer";
 import ApprovalGate from "@/components/approval/ApprovalGate";
 import DispatchPanel from "@/components/dispatch/DispatchPanel";
 import PipelineGraph from "@/components/monitor/PipelineGraph";
@@ -84,7 +82,7 @@ export default function MonitorPage() {
             BLAZE
           </span>
           <span className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-faint md:inline">
-            agent monitor
+            agent workflow
           </span>
           <div className="min-w-0 border-l border-edge pl-3">
             <div
@@ -96,7 +94,6 @@ export default function MonitorPage() {
             <div className="truncate font-mono text-[10px] text-faint">
               {state.incidentId ?? "—"}
               {state.lastSequence > 0 ? ` · seq ${state.lastSequence}` : ""}
-              {state.networkMode ? ` · network ${state.networkMode}` : ""}
             </div>
           </div>
         </div>
@@ -108,14 +105,8 @@ export default function MonitorPage() {
       {/* zero height until a fallback/error is reduced */}
       <SystemBanners />
 
-      {/* demo row — existing controls, reused as-is */}
-      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-edge bg-surface px-3 py-1.5">
-        <DemoControls />
-        <div className="ml-auto flex items-center gap-3">
-          <StreamModeToggle />
-          <PlayerBar />
-        </div>
-      </div>
+      {/* control row — minimal on purpose (Lakhdar): start · reset · speed */}
+      <WorkflowControls />
 
       {/* main row — pipeline graph + commander aside */}
       <main
@@ -162,6 +153,49 @@ export default function MonitorPage() {
       {/* clicking a node raises the detail overlay OVER the live graph —
           the stream keeps running behind it (X / Esc / click-outside closes) */}
       <NodeDetailOverlay nodeId={selected} onClose={() => setSelected(null)} />
+    </div>
+  );
+}
+
+/** Minimal control row (Lakhdar's spec): start · reset · speed — nothing else. */
+function WorkflowControls() {
+  const controls = useSessionControls();
+  const player = usePlayerState();
+  return (
+    <div className="flex shrink-0 flex-wrap items-center gap-3 rounded-md border border-edge bg-surface px-3 py-1.5">
+      <button
+        type="button"
+        onClick={() => controls.start()}
+        className="rounded-sm border border-accent-dim px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-wide text-accent hover:border-accent"
+      >
+        ▶ start
+      </button>
+      <button
+        type="button"
+        onClick={() => controls.reset()}
+        className="rounded-sm border border-edge px-3 py-1 font-mono text-[11px] uppercase tracking-wide text-muted hover:border-edge-strong hover:text-foreground"
+      >
+        ↺ reset
+      </button>
+      <div className="flex items-center gap-1" role="group" aria-label="Replay speed">
+        {PLAYER_SPEEDS.map((speed: PlayerSpeed) => (
+          <button
+            key={speed}
+            type="button"
+            onClick={() => controls.setSpeed(speed)}
+            className={`rounded-sm border px-2 py-1 font-mono text-[10px] ${
+              player.speed === speed
+                ? "border-accent text-accent"
+                : "border-edge text-muted hover:border-edge-strong"
+            }`}
+          >
+            x{speed}
+          </button>
+        ))}
+      </div>
+      <div className="ml-auto">
+        <StreamModeToggle />
+      </div>
     </div>
   );
 }
