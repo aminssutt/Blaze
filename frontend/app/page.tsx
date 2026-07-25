@@ -1,9 +1,9 @@
 /**
- * BLAZE public landing v2 — Astyr-grade structure, 100% BLAZE content.
+ * BLAZE public landing v3 — light, sober, fast to read (~30 s scroll).
  *
- * Numbered narrative: hero thesis → 01 problem → 02 animated pipeline
- * diagram (the signature) → 03 five agents & their guardrails → 04 human
- * veto spotlight → 05 measured proof → 06 final CTA + demo film → footer.
+ * Five sections: hero thesis → 01 why now (real 2026 wildfire facts,
+ * sourced) → 02 animated pipeline diagram with the human-veto line →
+ * 03 measured numbers in one thin row → final CTA + one-line footer.
  * Static page — no store, no event source; all motion is client-side and
  * honors prefers-reduced-motion.
  */
@@ -11,10 +11,8 @@
 import type { Metadata } from "next";
 import Hero from "@/components/landing/Hero";
 import LandingNav from "@/components/landing/LandingNav";
-import ProblemSection from "@/components/landing/ProblemSection";
+import WhyNowSection from "@/components/landing/WhyNowSection";
 import PipelineDiagram from "@/components/landing/PipelineDiagram";
-import AgentsSection from "@/components/landing/AgentsSection";
-import HumanVetoSection from "@/components/landing/HumanVetoSection";
 import ProofSection from "@/components/landing/ProofSection";
 import FinalCta from "@/components/landing/FinalCta";
 import LandingFooter from "@/components/landing/LandingFooter";
@@ -32,10 +30,8 @@ export default function Landing() {
       <Hero />
 
       <main>
-        <ProblemSection />
+        <WhyNowSection />
         <PipelineDiagram />
-        <AgentsSection />
-        <HumanVetoSection />
         <ProofSection />
         <FinalCta />
       </main>
