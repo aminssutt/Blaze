@@ -5,7 +5,6 @@
 
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
-import SplineHero from "./SplineHero";
 
 const TRACK_BADGES = [
   { label: "Kaggle · Autonomous Agents", color: "var(--blaze-src-model)" },
@@ -26,8 +25,6 @@ export default function Hero() {
 
   return (
     <header className="relative min-h-[80vh] overflow-hidden">
-      {/* 3D Spline backdrop — behind everything, silent fallback offline */}
-      <SplineHero />
 
       {/* ambient radio traffic, barely-there texture */}
       <div
