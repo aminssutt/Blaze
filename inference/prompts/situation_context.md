@@ -64,14 +64,18 @@ buildings when the incident is far from any structure and no RadioEvent mentions
   data, unanswered uncertainties from RadioEvents. An empty list is almost always wrong.
 - **Compactness (documented fix for issue #52, observed in live runs).** The snapshot
   is a decision picture, not a data dump: the whole JSON object must stay small enough
-  to be generated within a bounded output budget (aim well under 1500 tokens). Do NOT
+  to be generated within a bounded output budget (aim well under 1000 tokens). Do NOT
   copy feature collections wholesale. Per array section (`fire_hotspots`, `roads`,
   `buildings_and_parcels`, `critical_assets`, `units`, `resources`) keep AT MOST the
-  ~5 most decision-relevant entries, each reduced to its essential fields (ids, names,
+  3 most decision-relevant entries, each reduced to its essential fields (ids, names,
   status, restrictions, coordinates); summarize the rest as counts inside
-  `known_facts` (e.g. "cadastre: 10193 buildings in the demo zone, 12 sampled"). Keep
+  `known_facts` (e.g. "cadastre: 10193 buildings in the demo zone, 6 sampled"). Keep
   `known_facts` / `uncertain_facts` / `conflicts` to one short sentence per item. A
   truncated snapshot is worthless: shorter is safer.
+- **Output format (documented fix for issue #52).** Emit the snapshot as MINIFIED
+  single-line JSON: no indentation, no newlines between keys, no markdown fences, no
+  prose before or after. Pretty-printed output wastes the entire token budget on
+  whitespace and gets truncated mid-object.
 
 ## Hard prohibitions
 

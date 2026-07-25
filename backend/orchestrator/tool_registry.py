@@ -306,7 +306,7 @@ def build_default_registry() -> ToolRegistry:
 #: ~10k). The registry serves the model a deterministic digest (counts + a
 #: bounded sample with geometry reduced to a centroid) so tool results fit in
 #: the 8k-token Gemma context. Truncation is explicit in the payload.
-MAX_DIGEST_FEATURES = 12
+MAX_DIGEST_FEATURES = 6
 
 FIRMS_ARGS_SCHEMA: Dict[str, Any] = {
     "$schema": "http://json-schema.org/draft-07/schema#",
