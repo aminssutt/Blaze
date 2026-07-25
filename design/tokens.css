@@ -42,6 +42,23 @@
   --blaze-info: #38bdf8; /* info blue — tool/agent activity */
 
   /* ---------------------------------------------------------------- */
+  /* Color — provenance (SourceType, product invariant #2)            */
+  /* ---------------------------------------------------------------- */
+  /* One distinct hue per SourceType value so provenance is readable   */
+  /* at a glance anywhere in the control room. `-dim` variants are     */
+  /* the badge fills; the base colour is the text/border colour.       */
+  --blaze-src-live: #34d399; /* live_public — fetched now, online */
+  --blaze-src-live-dim: #064e3b;
+  --blaze-src-cached: #60a5fa; /* cached_public — local cache copy */
+  --blaze-src-cached-dim: #1e3a8a;
+  --blaze-src-seeded: #a78bfa; /* seeded_demo — scenario fixture */
+  --blaze-src-seeded-dim: #4c1d95;
+  --blaze-src-human: #fbbf24; /* human_report — firefighter radio */
+  --blaze-src-human-dim: #78350f;
+  --blaze-src-model: #f472b6; /* model_inference — Gemma inference */
+  --blaze-src-model-dim: #831843;
+
+  /* ---------------------------------------------------------------- */
   /* Typography                                                       */
   /* ---------------------------------------------------------------- */
   /* UI text (--font-geist-sans is injected by next/font in app/layout.tsx) */

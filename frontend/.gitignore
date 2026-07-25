@@ -42,3 +42,6 @@ next-env.d.ts
 
 # generated copy of contracts/mocks (source of truth: contracts/mocks/)
 /public/mocks/
+
+# generated copy of the scenario/geo/audio fixtures (source of truth: data/)
+/public/data/

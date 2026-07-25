@@ -31,6 +31,18 @@
   --color-warn: var(--blaze-warn);
   --color-info: var(--blaze-info);
 
+  /* Provenance palette (ticket #38) — consumed by components/ui/SourceBadge */
+  --color-src-live: var(--blaze-src-live);
+  --color-src-live-dim: var(--blaze-src-live-dim);
+  --color-src-cached: var(--blaze-src-cached);
+  --color-src-cached-dim: var(--blaze-src-cached-dim);
+  --color-src-seeded: var(--blaze-src-seeded);
+  --color-src-seeded-dim: var(--blaze-src-seeded-dim);
+  --color-src-human: var(--blaze-src-human);
+  --color-src-human-dim: var(--blaze-src-human-dim);
+  --color-src-model: var(--blaze-src-model);
+  --color-src-model-dim: var(--blaze-src-model-dim);
+
   --font-sans: var(--blaze-font-sans);
   --font-mono: var(--blaze-font-mono);
 }
@@ -39,4 +51,32 @@ body {
   background: var(--blaze-bg);
   color: var(--blaze-text);
   font-family: var(--blaze-font-sans);
+}
+
+/*
+ * Thin control-room scrollbar for internally scrolling panel bodies
+ * (ticket #38). Panels scroll, the page never does.
+ */
+.blaze-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--blaze-border-strong) transparent;
+  overscroll-behavior: contain;
+}
+
+.blaze-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.blaze-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.blaze-scroll::-webkit-scrollbar-thumb {
+  background: var(--blaze-border-strong);
+  border-radius: var(--blaze-radius-sm);
+}
+
+.blaze-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--blaze-text-faint);
 }
