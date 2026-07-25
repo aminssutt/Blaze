@@ -9,14 +9,14 @@
 //
 // The section closes with two short additions: what actually comes OUT of
 // the pipeline (per-unit voice orders, Piper, radio) and a demo-orientation
-// teaser — a decorative mini agent node telling visitors what to click for
-// in /workflow.
+// teaser — WorkflowPreview, an auto-playing miniature of the /workflow
+// click-an-agent gesture.
 
 "use client";
 
-import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import { Eyebrow, Reveal, fadeUp, staggerParent } from "./primitives";
+import WorkflowPreview from "./WorkflowPreview";
 
 const LOOP_S = 8;
 
@@ -337,63 +337,10 @@ export default function PipelineDiagram() {
           </p>
         </Reveal>
 
-        {/* Demo-orientation teaser: what to do once you open /workflow. */}
+        {/* Demo-orientation teaser: an auto-playing miniature of the
+            /workflow gesture — click an agent, its terminal opens. */}
         <Reveal delay={0.2} className="mx-auto mt-12 max-w-3xl">
-          <div
-            className="flex flex-col items-center gap-5 rounded-lg border px-6 py-6 text-center sm:flex-row sm:text-left"
-            style={{ borderColor: "var(--blaze-border)" }}
-          >
-            <div
-              aria-hidden
-              className="relative shrink-0 rounded-lg border px-4 py-3"
-              style={{
-                background: "var(--blaze-bg-raised)",
-                borderColor: "var(--blaze-border-strong)",
-              }}
-            >
-              <span
-                className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full border font-mono text-[10px] font-bold"
-                style={{
-                  background: "var(--blaze-bg-overlay)",
-                  borderColor: "var(--blaze-accent)",
-                  color: "var(--blaze-accent)",
-                }}
-              >
-                SC
-              </span>
-              <p
-                className="font-mono text-[10px] uppercase tracking-[0.18em]"
-                style={{ color: "var(--blaze-text-faint)" }}
-              >
-                06
-              </p>
-              <p
-                className="mt-1 text-[12.5px] font-semibold leading-tight"
-                style={{ color: "var(--blaze-text)" }}
-              >
-                Safety Critic
-              </p>
-            </div>
-            <div>
-              <p
-                className="text-[14px] leading-relaxed"
-                style={{ color: "var(--blaze-text-muted)" }}
-              >
-                In the demo, click any agent to open its technical terminal and
-                a plain-language account of what it received and decided.
-              </p>
-              <Link
-                href="/workflow"
-                className="mt-3 inline-block rounded-md border px-4 py-2 font-mono text-[12px] font-semibold uppercase tracking-[0.12em]"
-                style={{
-                  borderColor: "var(--blaze-accent)",
-                  color: "var(--blaze-accent)",
-                }}
-              >
-                Open demo →
-              </Link>
-            </div>
-          </div>
+          <WorkflowPreview />
         </Reveal>
       </div>
     </section>
