@@ -36,3 +36,6 @@ Thumbs.db
 # Logs & temp
 *.log
 tmp/
+
+# Generated TTS test output
+speech/tts/*.wav
