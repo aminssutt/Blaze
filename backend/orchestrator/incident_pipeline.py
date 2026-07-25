@@ -325,12 +325,14 @@ class IncidentPipeline:
         try:
             report = await self._run_inner(item, audio_rel, audio_path)
         except PipelineFailure:
+            self._write_failure_report()
             raise
         except Exception as exc:
             reason = f"{type(exc).__name__}: {exc}"
             logger.exception("pipeline failed: %s", reason)
             if not machine.is_terminal:
                 machine.fail_with_fallback(reason)
+            self._write_failure_report()
             raise
         finally:
             e2e_ms = self.metrics.end_incident()
@@ -442,6 +444,9 @@ class IncidentPipeline:
         # ---- Agent 3 + 4: plan -> safety review (bounded revision loop) ---
         plans: List[Dict[str, Any]] = []
         reviews: List[Dict[str, Any]] = []
+        self._debug_plans = plans
+        self._debug_reviews = reviews
+        self._debug_snapshot = snapshot
 
         with self._stage("tactical_planning_v1"):
             plan = await self.planning_agent.draft_plan(
@@ -576,6 +581,30 @@ class IncidentPipeline:
     # ------------------------------------------------------------------ #
     # Report
     # ------------------------------------------------------------------ #
+
+    def _write_failure_report(self) -> None:
+        """Dump everything produced so far when the run cannot complete."""
+        try:
+            self.output_dir.mkdir(parents=True, exist_ok=True)
+            path = self.output_dir / f"{self.incident_id}_FAILURE.json"
+            payload = {
+                "incident_id": self.incident_id,
+                "generated_at": _utcnow_iso(),
+                "final_state": self.machine.state.value,
+                "timings_s": dict(self.timings_s),
+                "snapshot": getattr(self, "_debug_snapshot", None),
+                "plans": getattr(self, "_debug_plans", []),
+                "safety_reviews": getattr(self, "_debug_reviews", []),
+                "events": [e.to_dict() for e in self.machine.emitted_events],
+                "per_agent_llm": self._per_agent_latency(),
+            }
+            path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2, default=str),
+                encoding="utf-8",
+            )
+            logger.error("failure report written: %s", path)
+        except Exception:  # noqa: BLE001 — diagnostics must never mask the real error
+            logger.exception("could not write the failure report")
 
     def _per_agent_latency(self) -> Dict[str, Dict[str, Any]]:
         agg: Dict[str, Dict[str, Any]] = {}
