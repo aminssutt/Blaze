@@ -332,6 +332,80 @@ class ScenarioPipeline(IncidentPipeline):
             ],
         }
 
+    async def _draft_with_budget(
+        self,
+        stage_name: str,
+        planner_snapshot: Dict[str, Any],
+        previous: Optional[Dict[str, Any]],
+    ):
+        """draft_plan with a deterministic context-window fallback (issue #53).
+
+        Live finding (runs 4/6): the guided-decoding REPAIR attempt re-sends
+        the whole prompt plus the bad output, so a first generation that fits
+        can still 400 on repair. On a window rejection the draft is retried
+        ONCE with a tight budget: 3 clipped facts per event, minimal previous
+        plan (unit/action skeleton + clipped safety feedback and remediation
+        hints — the hints must survive, they carry the mechanical fixes).
+        """
+        from agents.common.inference_client import InferenceRequestError
+
+        try:
+            with self._stage(stage_name):
+                return await self.planning_agent.draft_plan(
+                    self._planner_events(), planner_snapshot, self.units_doc,
+                    previous_plan=previous,
+                )
+        except InferenceRequestError as exc:
+            logger.warning(
+                "planner %s hit the context window (%s) — retrying once with "
+                "the tight budget", stage_name, exc,
+            )
+            tight_events = [
+                {
+                    **{
+                        key: e.get(key)
+                        for key in (
+                            "event_id", "audio_id", "event_type", "unit_id",
+                            "is_correction", "corrects_event_id",
+                        )
+                    },
+                    "facts": [str(f)[:120] for f in (e.get("facts") or [])[:3]],
+                }
+                for e in self.all_radio_events
+            ]
+            tight_prev: Optional[Dict[str, Any]] = None
+            if previous is not None:
+                feedback = previous.get("safety_review_feedback") or {}
+                tight_prev = {
+                    "plan_id": previous.get("plan_id"),
+                    "version": previous.get("version"),
+                    "summary": str(previous.get("summary"))[:300],
+                    "unit_actions": [
+                        {k: a.get(k) for k in ("unit_id", "action_type") if k in a}
+                        for a in previous.get("unit_actions") or []
+                        if isinstance(a, Mapping)
+                    ],
+                    "replan_reason": (
+                        str(previous.get("replan_reason"))[:400]
+                        if previous.get("replan_reason") is not None
+                        else None
+                    ),
+                    "safety_review_feedback": {
+                        "status": feedback.get("status"),
+                        "required_changes": [
+                            str(c)[:220] for c in (feedback.get("required_changes") or [])[:2]
+                        ],
+                        "remediation_hints": [
+                            str(h)[:300] for h in (feedback.get("remediation_hints") or [])[:3]
+                        ],
+                    } if feedback else None,
+                }
+            with self._stage(f"{stage_name}_tight"):
+                return await self.planning_agent.draft_plan(
+                    tight_events, planner_snapshot, self.units_doc,
+                    previous_plan=tight_prev,
+                )
+
     async def _planning_cycle(
         self,
         cycle: str,
@@ -346,11 +420,9 @@ class ScenarioPipeline(IncidentPipeline):
         self.cycles.append(cycle_info)
 
         planner_snapshot = self._planner_snapshot(snapshot)
-        with self._stage(f"planning_{cycle}_v1"):
-            plan = await self.planning_agent.draft_plan(
-                self._planner_events(), planner_snapshot, self.units_doc,
-                previous_plan=previous_context,
-            )
+        plan = await self._draft_with_budget(
+            f"planning_{cycle}_v1", planner_snapshot, previous_context
+        )
         self.plans.append(plan.to_dict())
         machine.submit_draft_plan(plan.to_dict())
         cycle_info["plan_versions"].append(machine.plan_version)
@@ -387,11 +459,9 @@ class ScenarioPipeline(IncidentPipeline):
             machine.complete_safety_review(status, dict(review))
             revision += 1
             previous = self._revision_context(plan.to_dict(), review)
-            with self._stage(f"planning_{cycle}_v{revision + 1}"):
-                plan = await self.planning_agent.draft_plan(
-                    self._planner_events(), planner_snapshot, self.units_doc,
-                    previous_plan=previous,
-                )
+            plan = await self._draft_with_budget(
+                f"planning_{cycle}_v{revision + 1}", planner_snapshot, previous
+            )
             self.plans.append(plan.to_dict())
             machine.submit_draft_plan(plan.to_dict())
             cycle_info["plan_versions"].append(machine.plan_version)

@@ -298,13 +298,13 @@ Full script with narration in [`DEMO_SCRIPT.md`](./DEMO_SCRIPT.md). Step-by-step
 | Number of allowlisted tools | 7 registered in the Tool Execution Layer (weather, elevation, routing live; FIRMS, cadastre, OSM, resources adapters landing) |
 | Automated tests passing (mocked inference, real data/caches) | 180+ across agents, tools, state machine, executor, eval harness (per-PR pytest outputs in each PR body) |
 | STT latency — 9.92 s radio audio, Whisper `small`, CPU int8 | 2.61 s transcription (RTF 0.26), 1.48 s model load from cache, fully offline (measured, PR #69) |
-| Valid structured output rate (live Gemma) | TODO — pending GPU |
-| Correct unit / location / correction / confirmation extraction (live) | TODO — eval harness ready (27 labeled messages, PR #81); pending GPU |
-| Correct tool selection (live) | TODO — pending GPU |
-| Unsupported-fact / hallucination count (live) | TODO — pending GPU |
-| Per-agent Gemma latency / tokens/sec | TODO — pending GPU |
-| End-to-end latency (start incident → dispatch audio) | TODO — pending integration on GPU machine |
-| Cloud LLM calls during demo | design target 0, enforced by client guard; live verification TODO |
+| Valid structured output rate (live Gemma) | 26/26 live structured calls succeeded in the full 5-audio E2E run (0 failures; all 5 radio extractions valid on attempt 1) — vLLM `google/gemma-4-E4B-it`, NVIDIA L40S (run `incident-e2e-8e15010f`, PR for #53) |
+| Correct unit / location / correction / confirmation extraction (live) | 5-audio E2E: all 5 audios extracted with correct units and event types; audio_04 correction linked `corrects_event_id` to the audio_01 D17 event (state updated, not duplicated); audio_05 confirmation closed the explosion arc (reported → confirmed). Full 27-message eval-harness sweep still to run (#57) |
+| Correct tool selection (live) | Live 5-audio E2E: context agent selected and executed real tools (weather + resources path), 100% executed without invalid-argument rejections in the green runs (tool audit JSONL in the report) |
+| Unsupported-fact / hallucination count (live) | 3/3 dispatch messages passed the anti-invention lexical guardrails in both green E2E runs; no dangling `corrects_event_id` links (guardrail-stripped when unproven) |
+| Per-agent Gemma latency / tokens/sec | ~63 tokens/s on the L40S. Run `incident-e2e-8e15010f`: radio_intelligence 5 calls / 41.9 s (concurrent waves), situation_context 2 / 17.3 s, tactical_planning 12 / 306.7 s (6 plan versions), safety_critic 6 / 46.6 s, dispatch 1 / 4.3 s — 26 calls, max 3 concurrent (vLLM continuous batching) |
+| End-to-end latency — FULL 5-audio scenario (start → 3 dispatch WAVs) | **389.3 s (green run `incident-e2e-8e15010f`, `COMPLETED`, 80 events all contract-valid)** — includes 6 Gemma plan versions across 3 budgeted planning cycles with a mandatory safety review each. Concurrency measured: STT batch 5 audios in 5.1 s wall vs 15.1 s sequential; radio extraction wave 1 gain 14.3 s, wave 2 gain 6.2 s; parallel Piper TTS 1.0 s wall vs 1.6 s sequential |
+| Cloud LLM calls during demo | **0 measured** in every live E2E run (client-guard enforced and counted: `cloud_calls: 0` in each report) |
 
 Evaluation setup: **shipped** — 27 labeled French radio messages (5 demo + 22 adversarial: negations, corrections, vehicle restrictions, ambiguous numbers, missing speakers, contradictions, confirmed vs. unconfirmed, noisy-STT variants) with a pluggable runner producing `metrics.json` + a markdown table (PR #81). The runner is the **only** source allowed to populate the accuracy rows above.
 
