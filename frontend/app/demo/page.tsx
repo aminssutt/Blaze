@@ -32,10 +32,13 @@ import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode } from "react";
 import type {
   DispatchInstruction,
+  DraftTacticalPlan,
   EventType,
   SafetyReviewStatus,
+  TranscriptResult,
 } from "@/lib/contracts";
 import type { IncidentState, TtsState } from "@/lib/incidentStore";
+import { useTypewriter, useTypewriterLines, type TypedLine } from "@/lib/useTypewriter";
 import { PLAYER_SPEEDS, type PlayerSpeed } from "@/lib/streamPlayer";
 import {
   useIncidentState,
@@ -175,6 +178,136 @@ function FaintLine({ children }: { children: ReactNode }) {
     <p className="min-w-0 truncate font-mono text-[11px] leading-snug text-muted">
       {children}
     </p>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Typewriter presentation (ticket #120)                                      */
+/* -------------------------------------------------------------------------- */
+
+/** Blinking amber block cursor at the end of the line being typed. */
+function Cursor() {
+  return (
+    <motion.span
+      aria-hidden="true"
+      className="ml-0.5 inline-block h-[1em] w-[0.55em] translate-y-[0.18em] rounded-[1px]"
+      style={{ background: "var(--blaze-accent)" }}
+      animate={{ opacity: [1, 1, 0, 0] }}
+      transition={{ duration: 0.9, times: [0, 0.5, 0.5, 1], repeat: Infinity, ease: "linear" }}
+    />
+  );
+}
+
+/**
+ * One typewritten line. Keyed on the line's FULL text inside an
+ * AnimatePresence: when a plan v2 changes a line, the v1 text exits with a
+ * fast fade and the v2 text types itself in its place (mode="wait").
+ */
+function TypedLineView({ line, mono = false }: { line: TypedLine; mono?: boolean }) {
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.p
+        key={line.full}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        className={`min-w-0 break-words leading-snug text-foreground ${
+          mono ? "font-mono text-[12px]" : "text-[13px]"
+        }`}
+      >
+        {line.text}
+        {line.typing && <Cursor />}
+      </motion.p>
+    </AnimatePresence>
+  );
+}
+
+/**
+ * Skip affordance shared by the typewritten areas: one click on the text
+ * reveals everything instantly (the jury never waits on the animation).
+ */
+function SkipArea({
+  done,
+  skip,
+  children,
+}: {
+  done: boolean;
+  skip: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={skip}
+      disabled={done}
+      aria-label="Afficher le texte complet immédiatement"
+      title={done ? undefined : "Cliquer pour tout afficher"}
+      className="block w-full cursor-text text-left disabled:cursor-auto"
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * Étape 05 — the tactical plan "writes itself": summary first, then each
+ * unit action, character by character (~32 chars/s wall-clock, capped
+ * independently of the replay speed), 150 ms breath between lines. On a new
+ * plan version, unchanged lines stay printed and only the changed lines
+ * fade out and re-type (see useTypewriterLines' diff).
+ */
+function PlanTypewriter({ plan }: { plan: DraftTacticalPlan }) {
+  const lines = useMemo(
+    () => [
+      plan.summary,
+      ...plan.unit_actions
+        .slice(0, 3)
+        .map((a) => `${a.unit_id} — ${truncate(a.instruction, 72)}`),
+    ],
+    [plan],
+  );
+  const tw = useTypewriterLines(lines, { charsPerSecond: 32, lineDelayMs: 150 });
+  return (
+    <SkipArea done={tw.done} skip={tw.skip}>
+      {tw.lines.map(
+        (line) =>
+          // A line only appears once its typing starts — the list "grows".
+          !line.pending && (
+            <TypedLineView key={line.index} line={line} mono={line.index > 0} />
+          ),
+      )}
+    </SkipArea>
+  );
+}
+
+/**
+ * Étape 02 — the current transcript "transcribes itself" as whisper would
+ * emit it. Keyed on audio_id: a new radio message fades the previous
+ * transcript out and types the new one.
+ */
+function TranscriptTypewriter({ transcript }: { transcript: TranscriptResult }) {
+  const tw = useTypewriter(transcript.text, { charsPerSecond: 32 });
+  return (
+    <SkipArea done={tw.done} skip={tw.skip}>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.p
+          key={transcript.audio_id}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          className="min-w-0 break-words text-[13px] leading-snug text-foreground"
+        >
+          « {tw.text}
+          {tw.typing && <Cursor />}
+          {tw.done && " »"}
+        </motion.p>
+      </AnimatePresence>
+      <FaintLine>
+        {transcript.model_name} · {transcript.latency_ms} ms
+      </FaintLine>
+    </SkipArea>
   );
 }
 
@@ -662,15 +795,7 @@ export default function DemoPage() {
                           produced={state.transcripts.length > 0}
                         >
                           {lastTranscript ? (
-                            <>
-                              <p className="line-clamp-2 text-[13px] leading-snug text-foreground">
-                                « {lastTranscript.text} »
-                              </p>
-                              <FaintLine>
-                                {lastTranscript.model_name} ·{" "}
-                                {lastTranscript.latency_ms} ms
-                              </FaintLine>
-                            </>
+                            <TranscriptTypewriter transcript={lastTranscript} />
                           ) : (
                             <FaintLine>speech-to-text local en attente…</FaintLine>
                           )}
@@ -780,14 +905,7 @@ export default function DemoPage() {
                           }
                         >
                           {state.plan ? (
-                            state.plan.unit_actions
-                              .slice(0, 3)
-                              .map((action) => (
-                                <Line key={action.action_id} mono>
-                                  {action.unit_id} —{" "}
-                                  {truncate(action.instruction, 72)}
-                                </Line>
-                              ))
+                            <PlanTypewriter plan={state.plan} />
                           ) : (
                             <FaintLine>
                               l’agent de planification attend le contexte…
