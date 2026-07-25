@@ -9,6 +9,7 @@
 
 import { useState } from "react";
 import { useIncidentState } from "@/lib/session";
+import { getBackendBase, isLiveMode } from "@/lib/streamMode";
 import {
   Badge,
   Panel,
@@ -18,11 +19,12 @@ import {
 import type { PanelComponentProps } from "@/components/ui";
 
 /**
- * tts_audio_path is repo-relative ("data/audio/tts/dispatch_alpha3.wav");
- * sync-data.mjs mirrors it under public/, so the URL is just "/<path>".
- * Ticket #54 swaps this for the backend's GET /dispatch/audio/{unit_id}.
+ * Mock mode: tts_audio_path is repo-relative ("data/audio/tts/…"), mirrored
+ * under public/ by sync-data.mjs → "/<path>". Live mode (#54/#55): the WAV
+ * lives on the backend, served by GET /dispatch/audio/{unit_id}.
  */
-function audioUrl(ttsAudioPath: string | null): string | null {
+function audioUrl(ttsAudioPath: string | null, unitId: string): string | null {
+  if (isLiveMode()) return `${getBackendBase()}/dispatch/audio/${unitId}`;
   return ttsAudioPath ? `/${ttsAudioPath.replace(/^\/+/, "")}` : null;
 }
 
@@ -100,6 +102,7 @@ export default function DispatchPanel({ className }: PanelComponentProps) {
           const tts = ttsByDispatchId[dispatch.dispatch_id];
           const src = audioUrl(
             tts?.tts_audio_path ?? dispatch.tts_audio_path ?? null,
+            dispatch.unit_id,
           );
           return (
             <li

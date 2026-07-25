@@ -73,6 +73,9 @@ async def send_dispatch(request: Request, body: SendRequest):
     tts = get_tts()
     results = []
     for instruction in body.instructions:
+        # The UI's dispatch cards are fed by this event (the orchestrator emits
+        # it on the agent path; the platform endpoint must be self-sufficient).
+        await bus.publish("dispatch.instruction.ready", instruction.model_dump())
         await bus.publish(
             "tts.started",
             {"dispatch_id": instruction.dispatch_id, "unit_id": instruction.unit_id},
