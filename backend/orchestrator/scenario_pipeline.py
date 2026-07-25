@@ -940,10 +940,26 @@ class ScenarioPipeline(IncidentPipeline):
 
         # ---- dispatch + TTS ------------------------------------------------
         machine.start_dispatch({"plan_id": plan["plan_id"]})
-        with self._stage("dispatch_generation"):
-            instructions = await self.dispatch_agent.generate(
-                dict(plan), decision, self.units_doc
+        from agents.dispatch.agent import DispatchGuardrailError
+
+        try:
+            with self._stage("dispatch_generation"):
+                instructions = await self.dispatch_agent.generate(
+                    dict(plan), decision, self.units_doc
+                )
+        except DispatchGuardrailError as exc:
+            # The agent's own bounded regeneration already retried with the
+            # violations as feedback; ONE pipeline-level retry re-samples the
+            # whole batch. The guardrail itself is untouched — a second
+            # rejection fails the run honestly.
+            logger.warning(
+                "dispatch guardrail rejected the batch (%s) — one pipeline-level retry",
+                exc,
             )
+            with self._stage("dispatch_generation_retry"):
+                instructions = await self.dispatch_agent.generate(
+                    dict(plan), decision, self.units_doc
+                )
         for instruction in instructions:
             machine.record_dispatch_instruction(dict(instruction))
 

@@ -23,7 +23,11 @@ approbation.
 3. **Nombres, routes, restrictions, périmètres : verbatim.** Les nombres
    (numéros de route, distances, pourcentages), les itinéraires et les
    restrictions de l'action approuvée sont repris exactement, sans arrondi ni
-   reformulation qui change le sens.
+   reformulation qui change le sens. Chaque nombre s'écrit EN CHIFFRES,
+   exactement comme dans l'instruction approuvée — jamais en toutes lettres
+   (« 300 mètres », JAMAIS « trois cents mètres » ; « D17 », JAMAIS
+   « D dix-sept »). <!-- issue #53 : calibration live — le modèle verbalisait
+   « 300 » en toutes lettres, rejeté par le garde-fou anti-invention -->.
 4. **Concis et non ambigu.** Uniquement l'information pertinente pour l'unité :
    ordre, itinéraire/destination, restriction, accusé de réception. Pas de
    justification, pas de contexte inutile, pas de politesse.
