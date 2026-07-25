@@ -1,0 +1,3 @@
+# tests only — the store itself is stdlib-only
+jsonschema>=4.22
+pytest>=8.0
