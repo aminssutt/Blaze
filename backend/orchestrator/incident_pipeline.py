@@ -122,9 +122,12 @@ class TemperedClient:
     keeps its own value. No agent code is modified.
     """
 
-    def __init__(self, client: GemmaClient, temperature: float) -> None:
+    def __init__(
+        self, client: GemmaClient, temperature: float, max_tokens: int | None = None
+    ) -> None:
         self._client = client
         self._temperature = float(temperature)
+        self._max_tokens = max_tokens
 
     async def chat(self, messages, **kwargs):  # noqa: ANN001 — passthrough
         kwargs.setdefault("temperature", self._temperature)
@@ -133,10 +136,35 @@ class TemperedClient:
     async def chat_structured(self, messages, **kwargs):  # noqa: ANN001 — passthrough
         if kwargs.get("temperature") is None:
             kwargs["temperature"] = self._temperature
+        # Live finding (#52): guided decoding occasionally degenerates into a
+        # whitespace loop that runs until the context window is full, turning
+        # one bad call into an unrecoverable 400 on the repair attempt. A hard
+        # output bound keeps the failure cheap and repairable.
+        if kwargs.get("max_tokens") is None and self._max_tokens:
+            kwargs["max_tokens"] = self._max_tokens
         return await self._client.chat_structured(messages, **kwargs)
 
     def __getattr__(self, name: str):
         return getattr(self._client, name)
+
+
+def _sanitize_schema(node: Any) -> Any:
+    """Copy of a JSON schema without $schema/$id/description/format annotations.
+
+    Live finding (#52): the full snapshot contract schema (annotations included)
+    is sent to vLLM as the guided-decoding grammar AND embedded in every repair
+    prompt; the annotations add nothing to generation but bloat both.
+    Validation still uses the ORIGINAL contract schema.
+    """
+    if isinstance(node, dict):
+        return {
+            key: _sanitize_schema(value)
+            for key, value in node.items()
+            if key not in {"$schema", "$id", "description", "format"}
+        }
+    if isinstance(node, list):
+        return [_sanitize_schema(item) for item in node]
+    return node
 
 
 def _utcnow_iso() -> str:
@@ -212,13 +240,20 @@ class IncidentPipeline:
 
         # -- the 5 Gemma agents (shared client, pinned low temperature) ----
         tempered = TemperedClient(
-            self.client, float(os.getenv("E2E_AGENT_TEMPERATURE", "0.2"))
+            self.client,
+            float(os.getenv("E2E_AGENT_TEMPERATURE", "0.2")),
+            max_tokens=int(os.getenv("E2E_MAX_OUTPUT_TOKENS", "1600")),
         )
         self.radio_agent = RadioIntelligenceAgent(tempered, self.known_units)
         self.context_agent = SituationContextAgent(
             tempered,
             self.tool_executor,
             catalog=catalog_from_registry(self.registry.describe()),
+        )
+        # Orchestrator-side schema slimming for the LLM request only — the
+        # agent's validator keeps enforcing the ORIGINAL contract schema.
+        self.context_agent._snapshot_schema = _sanitize_schema(
+            self.context_agent._snapshot_schema
         )
         self.planning_agent = TacticalPlanningAgent(
             tempered, tool_executor=self._planner_tool_call
