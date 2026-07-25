@@ -1,11 +1,13 @@
-// Ticket #49 — diffusion aux unités. Owner: @six-16.
+// Ticket #49 — diffusion aux unités. Owner: @selyan-mhli.
 //
-// STUB laid down by ticket #38. Ticket #49 owns this file from now on.
 // PRODUCT INVARIANT #1 — this panel stays INERT until `dispatchUnlocked`.
 // Real slices: `dispatches` and `ttsByDispatchId` (per-dispatch TTS state).
+// Every element here is SIMULATED radio traffic and labeled as such — the
+// tts.ready audio paths resolve to repo files copied by sync-data.mjs.
 
 "use client";
 
+import { useState } from "react";
 import { useIncidentState } from "@/lib/session";
 import {
   Badge,
@@ -14,6 +16,38 @@ import {
   dispatchStatusVariant,
 } from "@/components/ui";
 import type { PanelComponentProps } from "@/components/ui";
+
+/**
+ * tts_audio_path is repo-relative ("data/audio/tts/dispatch_alpha3.wav");
+ * sync-data.mjs mirrors it under public/, so the URL is just "/<path>".
+ * Ticket #54 swaps this for the backend's GET /dispatch/audio/{unit_id}.
+ */
+function audioUrl(ttsAudioPath: string | null): string | null {
+  return ttsAudioPath ? `/${ttsAudioPath.replace(/^\/+/, "")}` : null;
+}
+
+/** Per-unit TTS player that degrades to a labeled badge when the WAV is absent. */
+function TtsPlayer({ src, unitId }: { src: string; unitId: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <Badge variant="warn" title={`fichier audio indisponible : ${src}`}>
+        audio indisponible — texte seul
+      </Badge>
+    );
+  }
+  // No <track> caption: the exact message_text is rendered next to the player.
+  return (
+    <audio
+      controls
+      preload="none"
+      src={src}
+      onError={() => setFailed(true)}
+      className="h-7 w-full"
+      aria-label={`Message audio TTS pour ${unitId}`}
+    />
+  );
+}
 
 export default function DispatchPanel({ className }: PanelComponentProps) {
   const { dispatches, dispatchesSent, dispatchUnlocked, ttsByDispatchId } =
@@ -43,11 +77,19 @@ export default function DispatchPanel({ className }: PanelComponentProps) {
       className={className}
       id="dispatch-panel"
       title="Diffusion aux unités"
-      subtitle={`${dispatchesSent}/${dispatches.length} transmis`}
+      subtitle={`${dispatchesSent}/${dispatches.length} transmis · simulé`}
       right={
-        <Badge variant="ok" filled>
-          déverrouillé
-        </Badge>
+        <span className="flex items-center gap-1.5">
+          <Badge
+            variant="info"
+            title="Aucune transmission radio réelle — endpoint simulated_dispatch"
+          >
+            diffusion simulée
+          </Badge>
+          <Badge variant="ok" filled>
+            déverrouillé
+          </Badge>
+        </span>
       }
       empty={dispatches.length === 0}
       emptyLabel="aucun message généré…"
@@ -56,6 +98,9 @@ export default function DispatchPanel({ className }: PanelComponentProps) {
       <ul className="flex flex-col gap-1.5">
         {dispatches.map((dispatch) => {
           const tts = ttsByDispatchId[dispatch.dispatch_id];
+          const src = audioUrl(
+            tts?.tts_audio_path ?? dispatch.tts_audio_path ?? null,
+          );
           return (
             <li
               key={dispatch.dispatch_id}
@@ -78,12 +123,22 @@ export default function DispatchPanel({ className }: PanelComponentProps) {
                   </Badge>
                 )}
                 {dispatch.acknowledgement_required && (
-                  <Badge variant="info">accusé requis</Badge>
+                  <Badge
+                    variant="info"
+                    title="L'unité doit accuser réception de ce message"
+                  >
+                    accusé requis
+                  </Badge>
                 )}
               </div>
               <p className="mt-1 text-[11px] leading-snug text-foreground">
                 « {dispatch.message_text} »
               </p>
+              {tts?.status === "ready" && src && (
+                <div className="mt-1.5">
+                  <TtsPlayer src={src} unitId={dispatch.unit_id} />
+                </div>
+              )}
             </li>
           );
         })}

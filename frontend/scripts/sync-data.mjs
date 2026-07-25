@@ -40,6 +40,13 @@ const RULES = [
     test: (name) => name === "manifest.json" || name.endsWith(".wav"),
     label: "data/audio/manifest.json + *.wav",
   },
+  {
+    // Ticket #49 — per-unit dispatch TTS WAVs referenced by tts.ready events.
+    from: join(repoRoot, "data", "audio", "tts"),
+    to: join(publicData, "audio", "tts"),
+    test: (name) => name.endsWith(".wav"),
+    label: "data/audio/tts/*.wav",
+  },
 ];
 
 let copied = 0;
