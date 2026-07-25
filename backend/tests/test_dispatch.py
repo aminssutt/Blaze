@@ -9,6 +9,26 @@ from backend.api.main import create_app
 from speech.tts.service import TTSService
 
 
+def approve_plan(client: TestClient, plan_id: str = "plan-v1") -> None:
+    """Dispatch is locked until a plan is approved (issue #34) — unlock it."""
+    client.post(
+        "/plans",
+        json={
+            "plan_id": plan_id,
+            "incident_id": "wildfire-demo-01",
+            "version": 1,
+            "summary": "test plan",
+            "objectives": [],
+            "unit_actions": [],
+            "created_at": "2026-07-25T10:00:00Z",
+        },
+    )
+    client.post(
+        "/approval/decision",
+        json={"plan_id": plan_id, "decision": "approve", "operator_name": "IC"},
+    )
+
+
 def make_instruction(unit_id: str, text: str) -> dict:
     return {
         "dispatch_id": f"dsp-{unit_id}",
@@ -33,6 +53,7 @@ def test_three_unit_messages_produce_three_playable_wavs(tmp_path):
     dispatch_module._tts_service = None  # fresh service with real voice from .env
     app = create_app()
     client = TestClient(app)
+    approve_plan(client)
     body = {"instructions": [make_instruction(u, t) for u, t in MESSAGES.items()]}
     resp = client.post("/dispatch/send", json=body)
     assert resp.status_code == 200
@@ -60,6 +81,7 @@ def test_tts_failure_falls_back_to_text_without_crash(tmp_path):
     try:
         app = create_app()
         client = TestClient(app)
+        approve_plan(client)
         body = {"instructions": [make_instruction("alpha-3", MESSAGES["alpha-3"])]}
         resp = client.post("/dispatch/send", json=body)
         assert resp.status_code == 200
@@ -78,6 +100,7 @@ def test_dispatch_clearly_labeled_simulated():
     dispatch_module._tts_service = None
     app = create_app()
     client = TestClient(app)
+    approve_plan(client)
     body = {"instructions": [make_instruction("bravo-2", MESSAGES["bravo-2"])]}
     payload = client.post("/dispatch/send", json=body).json()
     assert payload["delivery"] == "simulated_dispatch"

@@ -57,7 +57,18 @@ def _now() -> str:
 
 @router.post("/send")
 async def send_dispatch(request: Request, body: SendRequest):
-    """Simulated per-unit dispatch: TTS each message, emit events, never crash."""
+    """Simulated per-unit dispatch: TTS each message, emit events, never crash.
+
+    Hard requirement (issue #34): every instruction must reference a plan with
+    an explicit `approve` decision — otherwise 403, nothing is dispatched.
+    """
+    plans = request.app.state.plans
+    unapproved = {i.plan_id for i in body.instructions if not plans.is_approved(i.plan_id)}
+    if unapproved:
+        raise HTTPException(
+            status_code=403,
+            detail=f"dispatch locked: no approve decision for plan(s) {sorted(unapproved)}",
+        )
     bus = request.app.state.event_bus
     tts = get_tts()
     results = []
