@@ -8,6 +8,7 @@ these modules only reserve the structure.
 from fastapi import APIRouter
 
 from backend.api.routers.approval import router as approval_router
+from backend.api.routers.audio import router as audio_router
 from backend.api.routers.dispatch import router as dispatch_router
 from backend.api.routers.incident import router as incident_router
 from backend.streaming.sse import router as streaming_router
@@ -17,4 +18,5 @@ ALL_ROUTERS: list[APIRouter] = [
     approval_router,
     dispatch_router,
     streaming_router,
+    audio_router,
 ]
