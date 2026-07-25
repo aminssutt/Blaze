@@ -1,0 +1,64 @@
+{
+  "tool_call_id": "elevation-f1958fce3a51",
+  "tool_name": "elevation",
+  "status": "success",
+  "data": {
+    "center": {
+      "latitude": 43.45,
+      "longitude": 3.75
+    },
+    "points": [
+      {
+        "id": "center",
+        "latitude": 43.45,
+        "longitude": 3.75,
+        "elevation_m": 10.0
+      },
+      {
+        "id": "north",
+        "latitude": 43.4545,
+        "longitude": 3.75,
+        "elevation_m": 18.0
+      },
+      {
+        "id": "south",
+        "latitude": 43.4455,
+        "longitude": 3.75,
+        "elevation_m": 2.0
+      },
+      {
+        "id": "east",
+        "latitude": 43.45,
+        "longitude": 3.7561985622861536,
+        "elevation_m": 6.0
+      },
+      {
+        "id": "west",
+        "latitude": 43.45,
+        "longitude": 3.7438014377138464,
+        "elevation_m": 13.0
+      }
+    ],
+    "slope": {
+      "method": "central_difference_4_neighbors",
+      "north_south_distance_m": 1000.8,
+      "east_west_distance_m": 1000.8,
+      "slope_north_pct": 1.599,
+      "slope_east_pct": -0.699,
+      "slope_pct": 1.745,
+      "slope_deg": 1.0,
+      "downhill_azimuth_deg": 156.4
+    },
+    "units": {
+      "elevation": "m",
+      "slope": "%"
+    }
+  },
+  "source_type": "live_public",
+  "source_name": "open-meteo-elevation",
+  "retrieved_at": "2026-07-25T09:30:57+00:00",
+  "data_timestamp": "2026-07-25T09:30:57+00:00",
+  "is_cached": false,
+  "staleness_seconds": 0,
+  "error": null
+}

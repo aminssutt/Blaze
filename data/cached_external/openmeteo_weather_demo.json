@@ -1,0 +1,32 @@
+{
+  "tool_call_id": "weather-166f4c0f2380",
+  "tool_name": "weather",
+  "status": "success",
+  "data": {
+    "latitude": 43.45,
+    "longitude": 3.75,
+    "elevation_m": 10.0,
+    "timezone": "GMT",
+    "temperature_c": 24.9,
+    "relative_humidity_pct": 87,
+    "wind_speed_kmh": 12.8,
+    "wind_direction_deg": 74,
+    "wind_gusts_kmh": 31.3,
+    "precipitation_mm": 0.0,
+    "units": {
+      "temperature": "°C",
+      "relative_humidity": "%",
+      "wind_speed": "km/h",
+      "wind_direction": "°",
+      "wind_gusts": "km/h",
+      "precipitation": "mm"
+    }
+  },
+  "source_type": "live_public",
+  "source_name": "open-meteo",
+  "retrieved_at": "2026-07-25T09:30:54+00:00",
+  "data_timestamp": "2026-07-25T09:30:00+00:00",
+  "is_cached": false,
+  "staleness_seconds": 0,
+  "error": null
+}
