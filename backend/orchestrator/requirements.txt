@@ -1,0 +1,25 @@
+# backend/orchestrator — tool execution layer (issue #26)
+#
+# The orchestrator imports the merged adapters as top-level packages
+# (tools.weather / tools.elevation / tools.routing), so everything must run
+# FROM THE REPO ROOT so `tools.*` and `backend.*` resolve on sys.path:
+#
+#   python -m venv .venv                                   # gitignored
+#   .venv/Scripts/pip install -r backend/orchestrator/requirements.txt
+#   .venv/Scripts/python -m pytest backend/orchestrator/tests -v
+#
+# (backend/orchestrator/tests/conftest.py also prepends the repo root to
+#  sys.path, so the tests work regardless of the invocation cwd.)
+
+# Contract + argument validation (format-nongpl pulls rfc3339-validator so
+# the date-time format checks in the frozen schemas are actually enforced).
+jsonschema[format-nongpl]>=4.22
+
+# Tests
+pytest>=8.0
+
+# Runtime deps of the consumed tool adapters (imported, not modified):
+# tools/weather + tools/elevation import `requests` at module import time,
+# tools/routing needs pydantic v2.
+requests>=2.32
+pydantic>=2.6
