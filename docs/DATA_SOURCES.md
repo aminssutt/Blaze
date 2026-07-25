@@ -1,5 +1,20 @@
 # BLAZE — Data Sources
 
+## Demo location & bounding box (frozen — ticket #7)
+
+- **Commune**: Frontignan / massif de la Gardiole, Hérault, France — garrigue
+  terrain genuinely exposed to wildfires (INSEE 34108 for cadastre downloads).
+- **Bounding box (WSEN)**: `3.73, 43.44, 3.77, 43.47`
+  (min_lon, min_lat, max_lon, max_lat) — matches the `bounding_box` of the
+  frozen `incident.started` mock payload.
+- **Incident center**: `43.455, 3.756` (Hangar Zone, sector B12).
+- Every seeded coordinate (units, Command Post, resources, D17 / North Access /
+  Forest Track 5 geometry) lies inside this bbox — verified by
+  `scripts/platform/check_geometry.py`, which also regenerates the map preview
+  `data/geo/scenario_preview.geojson` (drop it on geojson.io to inspect).
+- External adapters use the same bbox: FIRMS area `3.70,43.42,3.80,43.49`
+  (small margin), Open-Meteo point `43.45, 3.75`.
+
 BLAZE combines live public APIs, downloaded public geographic data, and clearly labeled seeded demo data. Every datum shown in the UI or used by an agent carries a **provenance label** (see bottom of this page), and every external dependency has a **cached fallback** so the demo works fully offline.
 
 ## Source overview

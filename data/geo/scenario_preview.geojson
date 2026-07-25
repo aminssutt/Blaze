@@ -1,0 +1,211 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          3.749,
+          43.4515
+        ]
+      },
+      "properties": {
+        "label": "unit:alpha-3",
+        "kind": "unit",
+        "vehicle_type": "CCF"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          3.762,
+          43.457
+        ]
+      },
+      "properties": {
+        "label": "unit:bravo-2",
+        "kind": "unit",
+        "vehicle_type": "light_vehicle"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          3.744,
+          43.446
+        ]
+      },
+      "properties": {
+        "label": "unit:charlie-1",
+        "kind": "unit",
+        "vehicle_type": "light_vehicle"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          3.742,
+          43.447
+        ]
+      },
+      "properties": {
+        "label": "unit:command-post",
+        "kind": "unit",
+        "vehicle_type": "command_post"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          3.7382,
+          43.4601
+        ]
+      },
+      "properties": {
+        "label": "resource:water-point-2",
+        "kind": "resource",
+        "type": "water_point"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          3.7561,
+          43.4552
+        ]
+      },
+      "properties": {
+        "label": "resource:hangar-zone",
+        "kind": "resource",
+        "type": "industrial_building"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          3.765,
+          43.4508
+        ]
+      },
+      "properties": {
+        "label": "resource:camping-les-pins",
+        "kind": "resource",
+        "type": "vulnerable_area"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3.74,
+            43.445
+          ],
+          [
+            3.748,
+            43.45
+          ],
+          [
+            3.756,
+            43.455
+          ]
+        ]
+      },
+      "properties": {
+        "label": "road:d17",
+        "kind": "road",
+        "status": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3.748,
+            43.456
+          ],
+          [
+            3.735,
+            43.462
+          ]
+        ]
+      },
+      "properties": {
+        "label": "road:north-access",
+        "kind": "road",
+        "status": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            3.75,
+            43.448
+          ],
+          [
+            3.759,
+            43.454
+          ]
+        ]
+      },
+      "properties": {
+        "label": "road:forest-track-5",
+        "kind": "road",
+        "status": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3.73,
+              43.44
+            ],
+            [
+              3.77,
+              43.44
+            ],
+            [
+              3.77,
+              43.47
+            ],
+            [
+              3.73,
+              43.47
+            ],
+            [
+              3.73,
+              43.44
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "label": "demo_bbox",
+        "kind": "bbox"
+      }
+    }
+  ]
+}
