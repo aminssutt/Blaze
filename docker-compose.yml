@@ -1,0 +1,77 @@
+# BLAZE stack — vLLM (NVIDIA) + backend + frontend (issue #37)
+#
+#   docker compose up -d          # full stack (demo machine with NVIDIA GPU)
+#   docker compose up -d backend frontend   # without vLLM (mock/offline mode)
+#   docker compose down           # teardown (state is in-memory: down = reset)
+#
+# On machines where GPU-in-Docker is not available (macOS dev laptop), use
+# ./scripts/platform/start_stack.sh instead — same order, same health gates.
+
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    environment:
+      - HF_TOKEN=${HF_TOKEN}
+    command: >
+      --model ${GEMMA_MODEL_ID}
+      --host 0.0.0.0 --port 8000
+      --api-key ${VLLM_API_KEY:-local-only-placeholder}
+    ports:
+      - "8000:8000"
+    volumes:
+      - hf-cache:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\", timeout=2)'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+
+  backend:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - .:/app
+    env_file: .env
+    environment:
+      - VLLM_BASE_URL=http://vllm:8000
+    command: >
+      bash -c "pip install --quiet ./backend &&
+               uvicorn backend.api.main:app --host 0.0.0.0 --port ${BACKEND_PORT:-8080}"
+    ports:
+      - "${BACKEND_PORT:-8080}:${BACKEND_PORT:-8080}"
+    # Health-gated order: backend only starts once vLLM answers /health,
+    # so /incident/start never runs against a cold model server.
+    depends_on:
+      vllm:
+        condition: service_healthy
+        required: false          # `up backend` alone works in mock/offline mode
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:${BACKEND_PORT:-8080}/health\", timeout=2)'"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  frontend:
+    image: node:22-slim
+    working_dir: /app/frontend
+    volumes:
+      - .:/app
+    command: bash -c "npm ci && npm run dev -- --hostname 0.0.0.0 --port ${FRONTEND_PORT:-3000}"
+    environment:
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:${BACKEND_PORT:-8080}
+    ports:
+      - "${FRONTEND_PORT:-3000}:${FRONTEND_PORT:-3000}"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  hf-cache:
