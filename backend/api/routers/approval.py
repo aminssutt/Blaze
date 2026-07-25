@@ -5,9 +5,19 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from backend.api.contracts import contract_errors
 from backend.api.plans import PlanStore
 
 router = APIRouter(tags=["approval"])
+
+
+def _reject_contract_violations(schema_name: str, instance: dict) -> None:
+    errors = contract_errors(schema_name, instance)
+    if errors:
+        raise HTTPException(
+            status_code=422,
+            detail={"contract": schema_name, "errors": errors[:10]},
+        )
 
 
 def get_plans(request: Request) -> PlanStore:
@@ -39,6 +49,7 @@ class DecisionRequest(BaseModel):
 @router.post("/plans")
 async def submit_plan(request: Request, body: PlanSubmission):
     """Register a new draft plan version (orchestrator or mock injection)."""
+    _reject_contract_violations("draft_tactical_plan", body.model_dump())
     try:
         plan = get_plans(request).submit(body.model_dump())
     except ValueError as exc:
@@ -69,6 +80,10 @@ async def get_plan(request: Request, plan_id: str):
 async def record_decision(request: Request, body: DecisionRequest):
     store = get_plans(request)
     bus = request.app.state.event_bus
+    # A modify decision mints a v2 plan from these actions — they must honor the
+    # contract too, or dispatch quality degrades silently downstream.
+    for action in body.modified_actions or []:
+        _reject_contract_violations("unit_action", action)
     try:
         record, new_plan = store.decide(
             plan_id=body.plan_id,

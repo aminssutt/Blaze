@@ -46,9 +46,7 @@ def mock_plan(version: int = 1) -> dict:
         "version": version,
         "summary": "Withdraw Alpha 3 to refill via North Access",
         "objectives": ["protect crews", "maintain suppression"],
-        "unit_actions": [
-            {"unit_id": "alpha-3", "action_type": "withdraw", "target": "water-point-2"}
-        ],
+        "unit_actions": [unit_action("alpha-3", "withdraw")],
         "created_at": "2026-07-25T10:00:00Z",
     }
 
