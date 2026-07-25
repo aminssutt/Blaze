@@ -70,4 +70,4 @@ Follow `DEMO_SCRIPT.md`. Beats to narrate:
 - [ ] TODO: assign speakers per section (aminssutt / selyan-mhli / six-16)
 - [ ] TODO: timed rehearsal x3 (target ≤ 3:10 including demo)
 - [ ] TODO: fallback narration if demo must switch to backup video
-- [ ] TODO: anticipated Q&A (why not fine-tuned? why 5 agents? what breaks first in production?)
+- [x] Anticipated Q&A → [JURY_QA.md](JURY_QA.md) (rehearse at least: offline vs cloud GPU · what breaks first · why 5 agents)
