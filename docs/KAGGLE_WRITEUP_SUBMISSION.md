@@ -1,99 +1,125 @@
 # BLAZE — Turning Firefighter Radio Into a Live Operational Roadmap
 
-> Five local Gemma 4 agents convert fragmented radio voice into a safety-reviewed, human-approved tactical plan — fully offline on one NVIDIA GPU.
+> Five local Gemma 4 agents turn fragmented radio voice into a safety-reviewed, human-approved tactical plan — entirely offline, on one NVIDIA GPU.
 >
 > **Track: Autonomous Agents** · Also entering the **NVIDIA GPU Challenge** (Gemma 4 served locally via vLLM).
 >
-> Working rule kept throughout: **no invented results**. Every number below was measured; the few remaining placeholders are marked `[EVAL]` and are filled only by our evaluation runner.
+> Working rule kept throughout: **no invented results**. Every number below was measured on our own machine, with the command that produced it recorded in the repo.
 >
-> *(Internal engineering log with full detail: [`KAGGLE_WRITEUP.md`](KAGGLE_WRITEUP.md) in the repo.)*
+> *(Full engineering log: [`KAGGLE_WRITEUP.md`](KAGGLE_WRITEUP.md).)*
 
-## The problem
+## Why now
 
-Wildfires are fought under extreme stress and unreliable connectivity. Firefighters continuously describe the fireground over radio — smoke, wind shifts, blocked roads, water levels, explosions. That voice stream is the richest real-time sensor on scene, and it is almost entirely unstructured. The command post must mentally correlate dozens of fragmented, partially contradictory messages while making life-critical decisions. Corrections are the deadliest failure mode: *"the D17 is not fully blocked — light vehicles still pass"* can silently invalidate an earlier assumption; missing it is the difference between a retreat and a trap. And because firegrounds regularly lose network coverage, a cloud AI assistant fails exactly when it is needed.
+France burned **44,000 hectares in 2026** — a record reached by **mid-July**, with **12,500 fire starts** since January, already two thirds of the catastrophic 2022 season before the peak of summer ([Franceinfo](https://www.franceinfo.fr/faits-divers/incendie/les-incendies-ont-brule-au-moins-44-000-hectares-en-france-en-2026-et-128-personnes-ont-ete-interpellees-annonce-laurent-nunez-en-gironde_8118410.html), [Toute l'Europe](https://www.touteleurope.eu/environnement/feux-de-foret-plus-de-42-000-hectares-deja-brules-en-france-en-2026-un-record-a-la-mi-juillet/)). More fires, on more fronts, with the same number of command officers.
 
-## The solution
+## The problem, in one sentence
 
-BLAZE is an offline operational-intelligence system built as a genuine autonomous-agent workflow — not a transcription app, not a chatbot:
+**The best sensor on a fireground is the firefighter's voice — and nobody can process it.**
 
-**radio audio → local STT (faster-whisper) → Radio Intelligence agent → Situation Context agent + territorial tools → Tactical Planning agent → Safety Critic agent → human commander approval (hard gate) → Dispatch agent → local TTS (Piper) → one personalized voice instruction per unit.**
+During an intervention, crews describe the scene continuously over radio: smoke density, wind shifts, blocked roads, remaining water, explosions. That stream is richer than any satellite feed, and it is completely unstructured. The command post has to hold dozens of fragmented, overlapping, sometimes contradictory messages in its head while making decisions that put lives at risk.
 
-Gemma 4 interprets field communications, chooses tools, correlates information, proposes a plan, adversarially challenges that plan, waits for human approval, and only then writes per-unit dispatch messages. Corrections update the world model **without deleting the audit trail**. Every datum on screen is provenance-labeled (`live_public`, `cached_public`, `seeded_demo`, `human_report`, `model_inference`), and the entire pipeline survives a staged network blackout.
+Corrections are the deadliest failure mode. *"The D17 is not fully blocked — light vehicles still pass"* silently invalidates an earlier assumption. Missing it is the difference between a retreat route and a trap.
 
-BLAZE is decision support, not an autonomous commander: the human **always** approves, modifies, or rejects before anything is dispatched.
+And firegrounds regularly lose network coverage — so a cloud AI assistant fails at exactly the moment it is needed.
 
-## Architecture
+## What BLAZE does
 
-- **Backend** — FastAPI with a deterministic orchestrator: an explicit 15-state incident state machine, SSE event streaming, plan versioning, and a Tool Execution Layer (allowlist + JSON-Schema argument validation + audit trail).
-- **Frontend** — Next.js control room: tactical map, radio timeline, agent/tool trace, safety panel, approval controls, per-unit voice dispatch, NVIDIA metrics panel.
-- **Inference** — one local Gemma 4 deployment (vLLM, NVIDIA L40S) shared by all five agents; local faster-whisper STT and Piper TTS.
-- **Data** — Open-Meteo, NASA FIRMS, Cadastre Etalab, OSM — all cached so the demo never depends on venue Wi-Fi.
+BLAZE is an offline operational-intelligence system, built as a genuine autonomous-agent workflow:
 
-A deliberate rule separates **deterministic services** (ingestion, STT, tool execution, approval gate, TTS) from **agents**: we never present a service as an LLM, and agents never execute code — they propose tool calls that the deterministic layer validates against an allowlist.
+```
+radio audio → local STT (faster-whisper) → Radio Intelligence agent
+    → Situation Context agent + territorial tools → Tactical Planning agent
+    → Safety Critic agent → COMMANDER APPROVAL (hard gate)
+    → Dispatch agent → local TTS (Piper) → one personalized voice order per unit
+```
+
+Gemma 4 interprets field communications, chooses which territorial tools to call, correlates everything, proposes a plan, **attacks its own plan**, waits for a human decision, and only then writes one order per truck. Corrections update the world model without erasing the audit trail. Every datum on screen carries its origin (`live_public`, `cached_public`, `seeded_demo`, `human_report`, `model_inference`).
+
+BLAZE is decision support, never an autonomous commander: a human approves, modifies or rejects before anything is dispatched. The gate is structural — the state machine has no transition from "plan drafted" to "dispatched" that skips the human.
 
 ## The five agents
 
-All implemented, each with its own prompt, frozen I/O schema, and deterministic post-LLM guardrails (180+ passing tests across the repo):
+Each has its own prompt, its own frozen I/O schema, and deterministic guardrails that run **after** the model:
 
-| Agent | Output | Key guardrail |
+| Agent | Output | Guardrail that makes it trustworthy |
 |---|---|---|
-| Radio Intelligence | `RadioEvent[]` + confidence + evidence spans | Evidence must fuzzy-match the transcript or confidence is capped; corrections resolved against recent context |
-| Situation Context | Provenance-labeled `SituationSnapshot` | **Provenance lock**: source labels rewritten from real `ToolResult`s — the model cannot claim cached data is live |
-| Tactical Planning | Versioned `DraftTacticalPlan` | Evidence IDs verified against real event/tool IDs; append-only plan history; approval forced for high-risk actions |
-| Safety Critic | `SafetyReview` (pass/revise/block) | **Hybrid**: 8 deterministic rule checks (water thresholds, retreat routes, vehicle/road compatibility, hazmat perimeter…) that the LLM can escalate but never soften |
-| Dispatch | `DispatchInstruction[]`, TTS-ready | Refuses to issue a single LLM call without an `approve` decision; closed location vocabulary blocks invented routes |
+| **Radio Intelligence** | `RadioEvent[]` + confidence + evidence spans | Every extracted fact must quote the transcript; invented evidence caps confidence and raises an uncertainty flag. Corrections are resolved against recent context. |
+| **Situation Context** | Provenance-labeled `SituationSnapshot` | **Provenance lock**: source labels are rewritten from the real `ToolResult`s — the model physically cannot claim cached data is live. |
+| **Tactical Planning** | Versioned `DraftTacticalPlan` | Evidence IDs verified against real event/tool IDs; plan versions, IDs and timestamps generated by code; append-only history; approval forced on high-risk actions. |
+| **Safety Critic** | `SafetyReview` (pass / revise / block) | **Hybrid**: 8 deterministic rule checks (water thresholds, retreat routes, vehicle/road compatibility, 300 m hazmat perimeter…) that the LLM can escalate but never soften. |
+| **Dispatch** | `DispatchInstruction[]`, TTS-ready | Refuses to make a single LLM call without an `approve` decision; a closed location vocabulary blocks invented routes. |
 
-The Safety Critic design is the one we defend hardest: we rejected an LLM-only reviewer because an LLM can be talked out of an objection; a water-threshold check cannot. A mechanical `fail` forces revision regardless of the model's opinion (anti-sycophancy test included), and an LLM outage degrades to rules-only with a `revise` floor.
+The Safety Critic is the design we defend hardest. An LLM-only reviewer can be talked out of an objection; a water-threshold check cannot. So the mechanical rules run in pure Python, the LLM critique is fused on top, and a mechanical `fail` forces a revision regardless of what the model thinks — with an anti-sycophancy test proving it. If the model is unreachable, the Critic degrades to rules-only with a `revise` floor: the plan still gets challenged.
 
-## How Gemma 4 is used
+## What we actually use from Gemma 4
 
-Remove Gemma and nothing works — it is the reasoning layer of every stage.
+Remove Gemma and there is no product. It is the reasoning layer of every single stage — and we use three specific capabilities, not just "a chat model".
 
-- **Native function calling** (`--enable-auto-tool-choice --tool-call-parser gemma4`): agents receive a tool catalog and propose `ToolRequest`s with stated reasons; the deterministic layer validates and executes. Hallucinated tool names are discarded without execution; every request/result pair is audited.
-- **Structured output by construction**: every call goes through a shared client's `chat_structured()` — the request carries a `json_schema` response format enforced by vLLM guided decoding, the response is re-validated with `jsonschema` against frozen contracts, and a bounded repair loop re-prompts with the exact validation error before raising a typed failure.
-- **Checkpoint choice**: `google/gemma-4-E4B-it` in **bf16, unquantized** — a mixture-of-experts (~4B active parameters) whose full-precision weights (~15 GB) fit affordable hardware. We refuse lossy quantization without an evaluation proving it safe: these outputs are safety-critical. An E2B fallback (~6 GB) covers smaller GPUs by changing one environment variable.
-- **Hallucination containment is layered, not hoped for**: evidence-span matching, provenance rewriting, ID verification, closed-vocabulary dispatch checks, mechanical safety rules overriding LLM approval, and an evaluation runner that counts unsupported facts. Prompts reduce error rates; code bounds them.
-- **Offline is enforced, not claimed**: the inference client raises on any non-local URL, and a shared call log proves `cloud_calls = 0` live in the UI — including during the demo's network blackout.
+**1. Native function calling** (`--enable-auto-tool-choice --tool-call-parser gemma4`). The agents receive a catalog of 7 allowlisted tools — weather, elevation, routing, FIRMS hotspots, cadastre, OSM, unit resources — and propose calls with a stated reason. The deterministic Tool Execution Layer validates arguments against per-tool JSON Schemas and executes. This is what makes it an *agent workflow* rather than a prompt: Gemma decides that a wind report justifies pulling live weather and re-checking road access, and we can audit every request/result pair afterwards.
 
-## NVIDIA deployment (GPU Challenge)
+**2. Structured output by construction.** Every call goes through one shared client (`agents/common/inference_client.py`) via `chat_structured()`: the request carries a `json_schema` response format that vLLM enforces with **guided decoding**, the response is re-validated client-side with `jsonschema` against our frozen contracts, and a bounded repair loop re-prompts with the exact validation error. Result: agents hand each other typed objects, not prose that needs parsing. Measured on the live model: **100% valid structured output, 27/27 messages, zero repair failures**.
 
-We sized the GPU on our real constraint — not model size, but **concurrency**: five agents hitting one server in parallel, plus STT. The weights are the model's knowledge; the KV cache is its working memory, and cache is what limits concurrent agents. A 24 GB card left almost no cache; an H100 buys training bandwidth we would never use. The L40S is the usable-VRAM-per-dollar sweet spot, with headroom to grow model or context without touching code.
+**3. Full-precision reasoning on affordable hardware.** We run `google/gemma-4-E4B-it` in **bf16, unquantized** — a mixture-of-experts with ~4B active parameters whose full-precision weights (15.18 GiB measured) fit on a card you can put in a command vehicle. We keep full precision because these outputs are safety-critical, and an E2B checkpoint (~6 GB) covers smaller GPUs by changing one environment variable.
 
-| Metric (all measured on our instance) | Value |
+**Why this matters beyond the hackathon:** Gemma being open-weight is the entire reason BLAZE can exist. Operational radio traffic is sensitive; a fire service cannot ship it to a third-party API, and the fireground has no bandwidth to do so anyway. Gemma 4 is the first model in that size class that gives us function calling *and* schema-reliable output — the two things a multi-agent, auditable pipeline is built on.
+
+**Hallucination containment is layered, not hoped for**: evidence-span matching, provenance rewriting, ID verification, closed-vocabulary dispatch checks, mechanical safety rules overriding LLM approval, and an evaluation runner that counts unsupported facts. Prompts reduce error rates; code bounds them.
+
+**Offline is enforced, not claimed**: the inference client raises `RemoteInferenceBlockedError` on any non-local URL, and a shared `CallLog` counts `cloud_calls` — displayed live in the UI, including during the demo's staged network blackout.
+
+## Why NVIDIA — the sizing argument
+
+We sized the GPU on our real constraint, and it is **not** model size: it is **concurrency**. Five agents hit one server in parallel during a three-minute incident, plus concurrent speech-to-text.
+
+The weights are the model's knowledge; the **KV cache is its working memory**, and cache is what limits how many agents can think at once. A 24 GB card fits the weights but leaves almost no cache. An H100 sells training bandwidth we would never use. The **L40S** is the usable-VRAM-per-dollar sweet spot — and it left us **25.16 GiB of measured cache, 920,621 tokens, ×112 concurrency at 8k context**: room to grow the model or the context without touching a line of code.
+
+| Measured on our instance | Value |
 |---|---|
-| GPU | NVIDIA L40S, 46 068 MiB · driver 580.126.09 · CUDA 13.0 |
+| GPU | NVIDIA L40S — 46,068 MiB · driver 580.126.09 · CUDA 13.0 |
+| Machine | 12 CPU · 72 GiB RAM · 625 GiB disk |
 | Engine / model | vLLM 0.25.1 · `google/gemma-4-E4B-it` · bf16 · 8192 ctx |
-| Model load | 15.18 GiB, 4.6 s (weights) |
-| KV cache | 25.16 GiB → 920 621 tokens → max concurrency ×112 at 8k |
+| Model load | 15.18 GiB weights, 4.6 s |
+| KV cache | 25.16 GiB → 920,621 tokens → max concurrency ×112 at 8k |
 | Single-stream generation | 100 output tokens in 1.92 s end-to-end ≈ 52 tok/s |
-| STT (Whisper small, CPU int8) | 9.92 s radio audio transcribed in 2.61 s (RTF 0.26) |
-| Cloud LLM calls | 0 — enforced by the client guard |
+| STT (Whisper small, CPU int8) | 9.92 s of radio audio transcribed in 2.61 s (RTF 0.26) |
+| Cloud LLM calls | **0** — enforced by the client guard |
 
-We do not claim TensorRT-LLM, NIM, or quantization speedups: none are implemented. vLLM was chosen for first-class Gemma 4 support, guided decoding, and efficient concurrent serving.
+vLLM was chosen for first-class Gemma 4 support, guided decoding, and efficient concurrent serving of five agent roles from one deployment — five model instances would have cost five times the VRAM for zero added capability.
 
-## Challenges (real ones)
+Metrics shown in the UI come from a collector that reads `nvidia-smi` and the engine's own token usage. Anything it did not measure renders as `—`, never as a plausible-looking number.
 
-- Whisper `small` mangled domain nouns on radio audio ("D17" → "dédicite"); mitigated with lexicon-aware prompting and STT `initial_prompt`, with honest reporting either way.
-- The Safety Critic's water-refill check initially misread a retreat as a refill plan — caught by tests before merge.
-- Ground truth beat documentation: listening to the real recordings revealed a mislabeled speaker in the spec; the manifest was corrected against the audio.
-- Three developers built in parallel against **frozen JSON contracts** and a mock event stream — the frontend never waited for the backend, and agents never waited for real tools.
+## What is deployed
+
+The whole stack is one `docker compose up`: **vLLM (GPU-reserved) → FastAPI backend → Next.js frontend**, health-gated in that order so the backend never starts against a cold model server. A VM overlay (`docker-compose.vm.yml`) runs the demo box on the L40S with host networking, since vLLM is served natively there and the inference client's local-only guard expects `localhost`.
+
+The **backend** is a deterministic orchestrator: an explicit **15-state incident state machine** (`IDLE` → … → `AWAITING_HUMAN_APPROVAL` → … → `DISPATCHED`/`COMPLETED`/`FAILED_WITH_FALLBACK`), SSE event streaming on a single envelope, plan versioning, and the allowlisted Tool Execution Layer.
+
+The **frontend** is a Next.js control room in three views:
+
+- **`/workflow`** — the default: a live pipeline graph (services → the five Gemma agents → **HUMAN GATE** → dispatch/TTS). Click any node to raise its terminal and see what that agent is actually receiving and emitting, in real time. The commander's approval act is always fully visible.
+- **`/expert`** — nine full-screen panels for the operator who wants depth: radio feed, structured events, tactical map, situation synthesis, agent & tool trace, tactical plan, safety review, commander decision, dispatch.
+- **`/settings`** — the machine: installation record, live NVIDIA telemetry, and per-agent Gemma consumption.
+
+A deliberate architectural rule runs through all of it: **deterministic services** (ingestion, STT, tool execution, approval gate, TTS) are never dressed up as agents, and **agents never execute code** — they propose, the validated layer executes.
 
 ## Results
 
-Measured values only. Extraction rows come from our shipped evaluation harness (27 labeled French radio messages: negations, corrections, vehicle restrictions, ambiguous numbers, contradictions, noisy-STT variants) run against the **live** Gemma 4 on the L40S.
+Measured values only. Extraction rows come from our shipped evaluation harness — 27 labeled French radio messages (negations, corrections, vehicle restrictions, ambiguous numbers, contradictions, noisy-STT variants) — run against the **live** Gemma 4 on the L40S.
 
 | Metric | Value |
 |---|---|
-| Agents / allowlisted tools / automated tests | 5 / 7 / 180+ passing |
+| Agents / allowlisted tools / automated tests | 5 / 7 / **300 Python tests** across agents, tools, state machine, executor, eval harness |
 | Valid structured-output rate (live) | **100%** — 27/27 messages, zero repair failures |
 | Unit accuracy / correction detection (live) | **96.6%** / corrections **F1 1.00** (location 65.5%) |
-| Unsupported-fact rate (strict token-overlap vs gold) | 51% — largely paraphrase artifacts of the strict matcher; reported honestly, under review |
 | Mean extraction latency (live, guided decoding) | 7.2 s/message (p50 7.1 s, max 11.7 s) |
-| Cloud calls during the eval run | 0 (client-enforced) |
-| End-to-end latency (audio → voice dispatch) | `[EVAL]` — pending full-pipeline run |
+| Unsupported-fact rate (strict token-overlap vs gold) | 51% — the strict matcher counts any paraphrase of a correct fact as unsupported; reported as measured, with a semantic matcher as the next iteration |
+| Full offline scenario | **Passes end to end** — network booby-trapped in the test suite, five audios ingested, every adapter serving correctly-labeled cache, 70 events, run reaches `COMPLETED` with zero outbound calls |
+| Cloud calls during the eval run | **0** (client-enforced) |
 
 ## Limitations & next steps
 
-This is a hackathon prototype, not a certified operational product. The scenario is scripted (five prerecorded messages, plus radio-degraded variants); real fireground audio, per-service lexicons, and validation with actual fire officers are the immediate next steps — followed by LoRA adaptation on real corpus data with honest base-vs-adapted evaluation. The architecture was built so those corrections land in prompts and schemas, not in a rebuild.
+BLAZE is a hackathon prototype, not a certified operational product. The scenario is scripted — five prerecorded French messages plus radio-degraded variants — because a live demo needs reproducibility, and the same pipeline runs on both.
+
+The next steps are already scoped: real fireground audio and per-service lexicons; validation with actual SDIS command officers; a semantic evidence matcher to replace the strict token-overlap one; then LoRA adaptation on a real corpus with honest base-vs-adapted evaluation. The architecture was built so those corrections land in prompts and schemas — not in a rebuild.
 
 > *We are not adding another sensor to the fireground. We are unlocking the sensor that was already there: every firefighter.*
