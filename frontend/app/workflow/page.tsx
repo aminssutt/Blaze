@@ -22,7 +22,14 @@
  */
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useIncidentState, usePlayerState, useSessionControls } from "@/lib/session";
 import {
   deriveNodeStatuses,
@@ -35,6 +42,13 @@ import ApprovalGate from "@/components/approval/ApprovalGate";
 import DispatchPanel from "@/components/dispatch/DispatchPanel";
 import PipelineGraph from "@/components/monitor/PipelineGraph";
 import NodeDetailOverlay from "@/components/monitor/NodeDetailOverlay";
+import InspectHint from "@/components/monitor/InspectHint";
+import {
+  markInspectSeen,
+  readInspectSeen,
+  serverInspectSeen,
+  subscribeInspectSeen,
+} from "@/components/monitor/inspectSeen";
 import { StatusDot } from "@/components/ui";
 
 /** Incident status chip of the monitor header. */
@@ -66,6 +80,18 @@ export default function MonitorPage() {
   const player = usePlayerState();
   const [selected, setSelected] = useState<MonitorNodeId | null>(null);
   const autoStarted = useRef(false);
+  // Amplify the click affordance until the visitor has opened one node.
+  const inspectSeen = useSyncExternalStore(
+    subscribeInspectSeen,
+    readInspectSeen,
+    serverInspectSeen,
+  );
+  const coach = !inspectSeen;
+
+  const handleSelect = useCallback((id: MonitorNodeId | null) => {
+    setSelected(id);
+    if (id) markInspectSeen();
+  }, []);
 
   // Arm the player on mount (same contract as /expert): loads + validates the
   // stream so totals and jump points are ready before the first Play.
@@ -135,16 +161,28 @@ export default function MonitorPage() {
         className="flex min-h-0 flex-col gap-2 xl:flex-1 xl:flex-row xl:overflow-hidden"
         aria-label="Multi-agent pipeline monitor"
       >
-        {/* the living graph — every node is clickable */}
+        {/* The living graph — every node OPENS its terminal. The affordance
+            lives on the cards themselves (glyph + hover/focus outline); this
+            first-run hint just names the gesture once. Below lg it flows above
+            the stacked pipeline; from lg it floats in the slack under the
+            fit-to-container canvas, so it never pushes the graph around. */}
         <section
           aria-label="Pipeline graph"
-          className="min-h-[420px] overflow-hidden rounded-md border border-edge bg-background xl:h-auto xl:min-h-0 xl:flex-1"
+          className="relative flex min-h-[420px] flex-col overflow-hidden rounded-md border border-edge bg-background xl:h-auto xl:min-h-0 xl:flex-1"
         >
+          {/* centred with inset-x-0 + w-fit + mx-auto rather than a
+              -translate-x-1/2, which would fight motion's own transform */}
+          <InspectHint
+            show={coach}
+            onDismiss={markInspectSeen}
+            className="m-2 shrink-0 lg:absolute lg:inset-x-0 lg:bottom-4 lg:mx-auto lg:mb-0 lg:mt-0 lg:w-fit"
+          />
           <PipelineGraph
             statuses={statuses}
             revisionRequested={state.planRevisionRequests.length > 0}
             selected={selected}
-            onSelect={setSelected}
+            onSelect={handleSelect}
+            coach={coach}
           />
         </section>
 

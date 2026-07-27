@@ -67,40 +67,6 @@ function toPublicUrl(path: string): string {
   return path.startsWith("/") ? path : `/${path}`;
 }
 
-/** Twelve-bar VU meter — pure CSS animation, frozen under reduced motion. */
-function VuMeter({ active, reduced }: { active: boolean; reduced: boolean }) {
-  return (
-    <span aria-hidden className="flex h-3 items-end gap-[2px]">
-      {[3, 7, 5, 9, 6, 11, 8, 5, 9, 4, 7, 3].map((seed, i) => (
-        <motion.span
-          key={i}
-          className="w-[2px] rounded-full"
-          style={{
-            background: active ? "var(--blaze-accent)" : "var(--blaze-border-strong)",
-            height: `${seed + 2}px`,
-            transformOrigin: "bottom",
-          }}
-          animate={
-            active && !reduced
-              ? { scaleY: [0.35, 1, 0.55, 0.9, 0.4] }
-              : { scaleY: active ? 0.8 : 0.35 }
-          }
-          transition={
-            active && !reduced
-              ? {
-                  duration: 0.62 + (i % 4) * 0.13,
-                  repeat: Infinity,
-                  repeatType: "mirror",
-                  ease: "easeInOut",
-                }
-              : { duration: 0.2 }
-          }
-        />
-      ))}
-    </span>
-  );
-}
-
 export default function WalkieTalkie() {
   const reduced = useReducedMotion();
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -191,63 +157,17 @@ export default function WalkieTalkie() {
       />
 
       <div className="flex items-center justify-center gap-0 lg:justify-end">
-        {/* ---------------------------------------------------------------- */}
-        {/* Live transcript HUD — the legible companion to the tiny LCD.     */}
-        {/* ---------------------------------------------------------------- */}
-        <div
-          className="relative z-20 hidden w-[268px] shrink-0 translate-x-6 rounded-lg border p-4 backdrop-blur-sm sm:block"
-          style={{
-            background: "rgba(17, 20, 26, 0.92)",
-            borderColor: "var(--blaze-border-strong)",
-            boxShadow: "0 24px 60px -28px rgba(0,0,0,0.9)",
-          }}
-        >
-          <div className="flex items-center justify-between gap-2">
-            <span
-              className="font-mono text-[10px] uppercase tracking-[0.18em]"
-              style={{ color: "var(--blaze-text-faint)" }}
-            >
-              Live transcript
-            </span>
-            <VuMeter active={playing} reduced={Boolean(reduced)} />
-          </div>
-
-          <p
-            lang="fr"
-            aria-live="polite"
-            className="mt-3 min-h-[92px] font-mono text-[12.5px] leading-relaxed"
-            style={{ color: "var(--blaze-text)" }}
-          >
-            {shownWords.length > 0 ? (
-              <>
-                {shownWords.join(" ")}
-                {playing && (
-                  <span
-                    aria-hidden
-                    className="blaze-term-cursor ml-1 inline-block h-[0.95em] w-[0.5em] translate-y-[0.12em]"
-                    style={{ background: "var(--blaze-accent)" }}
-                  />
-                )}
-              </>
-            ) : (
-              <span style={{ color: "var(--blaze-text-faint)" }}>
-                Press the radio to receive the first fireground call. French
-                audio, transcribed locally — nothing leaves the machine.
-              </span>
-            )}
-          </p>
-
-          <div
-            className="mt-3 flex items-center justify-between border-t pt-2.5 font-mono text-[10px] uppercase tracking-[0.14em]"
-            style={{
-              borderColor: "var(--blaze-border)",
-              color: "var(--blaze-text-faint)",
-            }}
-          >
-            <span>{ready ? `${call?.speaker} → command post` : "no signal"}</span>
-            <span>{total > 0 ? `${index + 1} / ${total}` : "--"}</span>
-          </div>
-        </div>
+        {/* The transcript used to be mirrored in a HUD panel beside the
+            handset. It duplicated the LCD for no gain, so the panel is gone —
+            but the LCD is aria-hidden decoration, so the spoken text has to
+            stay reachable. This is that channel: invisible, announced. */}
+        <p lang="fr" aria-live="polite" className="sr-only">
+          {shownWords.length > 0
+            ? shownWords.join(" ")
+            : ready
+              ? `Radio call ${index + 1} of ${total} from ${call?.speaker}, not yet played.`
+              : "No radio call available."}
+        </p>
 
         {/* ---------------------------------------------------------------- */}
         {/* The handset itself — one big accessible button.                  */}
