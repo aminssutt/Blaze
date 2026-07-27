@@ -19,6 +19,12 @@ CHECK_TIMEOUT_S = 2.0
 
 
 async def _check_vllm(base_url: str) -> dict:
+    # Replay-only deployments run with no inference server at all (VLLM_BASE_URL
+    # empty). Probing nothing would pin /health to "degraded" forever, so report
+    # the component as deliberately disabled instead.
+    if not base_url.strip():
+        return {"status": "ok", "detail": "no inference server configured (replay mode)"}
+
     url = f"{base_url.rstrip('/')}/health"
     try:
         async with httpx.AsyncClient(timeout=CHECK_TIMEOUT_S) as client:
