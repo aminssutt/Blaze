@@ -16,7 +16,9 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   { href: "/workflow", label: "Workflow", title: "Agent control — pipeline graph and per-node terminals" },
-  { href: "/expert", label: "Legacy", title: "The previous control room (detailed view)" },
+  // "Legacy" read as "obsolete, don't click" — nobody opened the map, the plan
+  // or the safety review, which all live behind this tab.
+  { href: "/expert", label: "Tactical", title: "Map, tactical plan, safety review and agent traces" },
   { href: "/settings", label: "Settings", title: "Configuration and machine health" },
 ] as const;
 
@@ -43,7 +45,6 @@ export default function OpsNav() {
             className="rounded-full"
             loading="eager"
           />
-          BLAZE
         </Link>
 
         <span

@@ -3,6 +3,7 @@
 "use client";
 
 import Link from "next/link";
+import { REPO_URL } from "./GithubMark";
 
 export default function LandingFooter() {
   return (
@@ -26,9 +27,9 @@ export default function LandingFooter() {
         </p>
         <div className="flex items-center gap-5">
           <a
-            href="https://github.com/aminssutt/Blaze"
+            href={REPO_URL}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="text-[13px]"
             style={{ color: "var(--blaze-text-muted)" }}
           >
