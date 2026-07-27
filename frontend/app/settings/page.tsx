@@ -1,52 +1,69 @@
 "use client";
 
 /**
- * Settings view (/settings) — the machine and the model.
+ * Settings view (/settings) — what this deployment actually is.
  *
- * Three stacked sections, nothing else:
- *   1. Installation record — dated setup reading (GPU / model / engine),
- *      clearly labeled as NOT live telemetry.
- *   2. NVIDIA telemetry — the cockpit, driven 100% by `metric.updated`
- *      events; a value that was not measured renders as "—".
- *   3. Gemma consumption — per-agent table + scenario budget card, 100%
- *      derived from reduced stream events (see GemmaConsumptionTable).
+ * It used to describe "the machine and the model": a hardcoded installation
+ * record (NVIDIA L40S, gemma-4-E4B-it, vLLM 0.25.1, KV-cache sizing) plus an
+ * NVIDIA telemetry cockpit. None of that is running here. This deployment
+ * re-emits a frozen event stream recorded for the hackathon demo — no GPU, no
+ * inference engine, no model, no API key. The hardware record was removed
+ * rather than reworded, and the GPU cockpit with it: its values came from
+ * `metric.updated` payloads that declare themselves
+ * ("note": "mock placeholder values, not measured") and carry literal
+ * placeholders, so relabelling them "recorded" would have been a second lie.
  *
- * Everything workflow-shaped (pipeline stages, stream status pills, replay
- * controls) lives in /workflow — not here.
+ * What is left is what the replay genuinely provides: agent activity and the
+ * counters the store builds as it reduces the stream.
+ *
+ * Everything workflow-shaped (pipeline stages, stream status, replay controls)
+ * lives in /workflow — not here.
  */
 
 import { useEffect } from "react";
 import { useSessionControls } from "@/lib/session";
 import OpsNav from "@/components/ops/OpsNav";
-import GemmaConsumptionTable from "@/components/metrics/GemmaConsumptionTable";
-import NvidiaMetricsPanel from "@/components/metrics/NvidiaMetricsPanel";
+import ReplayActivityPanels from "@/components/metrics/ReplayActivityPanels";
 import { Panel } from "@/components/ui";
 
 /* ------------------------------------------------------------------------- */
-/* Installation record — dated, never presented as live                      */
+/* What this build runs — the disclosure that replaces the hardware record    */
 /* ------------------------------------------------------------------------- */
 
-const INSTALL_ROWS = [
-  ["GPU", "NVIDIA L40S — 46,068 MiB · driver 580.126.09 · CUDA 13.0"],
-  ["Model", "google/gemma-4-E4B-it · bf16 · 8192 context"],
-  ["Engine", "vLLM 0.25.1 · guided decoding · gemma4 tool-call parser"],
-  ["KV cache", "25.16 GiB → 920,621 tokens → ×112 concurrency at 8k"],
-  ["Machine", "12 CPU · 72 GiB RAM · 625 GiB disk"],
+const DEPLOYMENT_ROWS: readonly (readonly [string, string])[] = [
+  ["Source", "Recorded event stream, re-emitted envelope by envelope"],
+  ["Inference", "None — no model is loaded and no request leaves this build"],
+  ["Metrics", "Counted from the replayed events only (see the panels below)"],
 ] as const;
 
-function InstallCard() {
+function DeploymentCard() {
   return (
-    <Panel title="Installation record" subtitle="setup reading, Jul 25 2026 — not live telemetry">
+    <Panel
+      title="What this build runs"
+      subtitle="replay of a recorded scenario — no live inference"
+    >
       <dl className="flex flex-col gap-1.5">
-        {INSTALL_ROWS.map(([label, value]) => (
+        {DEPLOYMENT_ROWS.map(([label, value]) => (
           <div key={label} className="flex items-baseline gap-3">
-            <dt className="w-16 shrink-0 text-[11px]" style={{ color: "var(--blaze-text-faint)" }}>
+            <dt
+              className="w-20 shrink-0 text-[11px]"
+              style={{ color: "var(--blaze-text-faint)" }}
+            >
               {label}
             </dt>
             <dd className="font-mono text-[12px] text-foreground">{value}</dd>
           </div>
         ))}
       </dl>
+      <p
+        className="mt-3 text-[11px] leading-relaxed"
+        style={{ color: "var(--blaze-text-muted)" }}
+      >
+        The GPU, model and inference-engine readouts this page used to show
+        described the hackathon machine. That machine is gone, and the recorded
+        payloads that fed those readouts were placeholders rather than
+        measurements, so they were removed instead of being relabelled.
+      </p>
     </Panel>
   );
 }
@@ -69,16 +86,14 @@ export default function SettingsView() {
       <header className="px-1">
         <h1 className="text-[18px] font-semibold text-foreground">Settings</h1>
         <p className="text-[12px]" style={{ color: "var(--blaze-text-muted)" }}>
-          Machine, model &amp; telemetry — installation record, NVIDIA metrics, Gemma
-          consumption.
+          What this build runs, and what the replayed stream contains.
         </p>
       </header>
 
       <main className="flex flex-col gap-4">
-        <InstallCard />
-        <NvidiaMetricsPanel className="min-h-[20rem]" />
-        {/* Gemma consumption per agent + scenario budget — 100% event-derived. */}
-        <GemmaConsumptionTable />
+        <DeploymentCard />
+        {/* Agent activity + replay counters — 100% event-derived. */}
+        <ReplayActivityPanels />
       </main>
     </div>
   );

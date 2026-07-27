@@ -14,6 +14,15 @@
 // been requested. Desktop: a fixed canvas scaled to fit (ResizeObserver).
 // Mobile (<lg): the same nodes as a vertical stacked pipeline, no horizontal
 // scroll. Reduced-motion: flows and pulses are static (CSS media queries).
+//
+// CLICK AFFORDANCE — every node OPENS (its terminal + expert pane), and the
+// page auto-plays, so nothing but the card itself can say so. Three layers:
+// a quiet corner glyph present from the first frame on every node, an amber
+// outline shared by :hover and :focus-visible (mouse and keyboard get the very
+// same cue), and — only while `coach` is true, i.e. the visitor has never
+// opened a node — an "inspect" chip on the node that is currently working.
+
+
 
 "use client";
 
@@ -28,6 +37,7 @@ import {
   type NodeStatus,
   type PipelineNodeId,
 } from "@/lib/monitorPipeline";
+import InspectGlyph from "./InspectGlyph";
 
 const CANVAS = { width: 1240, height: 600 };
 
@@ -197,6 +207,72 @@ function WorkingDots() {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Click affordance                                                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Shared interactive treatment of every node button.
+ *
+ * OUTLINE, NOT RING — the cards animate `boxShadow` through motion (inline
+ * style), and Tailwind's `ring-*` compiles to box-shadow, so a ring is silently
+ * overwritten by the status glow. `outline` is a different property: it always
+ * shows, it takes the same value on hover and on focus-visible (keyboard parity
+ * for free) and it costs no layout.
+ */
+const INTERACTIVE = [
+  "group cursor-pointer outline-offset-2",
+  "transition-[outline-color,border-color] duration-200",
+  "hover:outline-2 hover:outline-accent/80",
+  "focus-visible:outline-2 focus-visible:outline-accent",
+].join(" ");
+
+/** Selected node — foreground outline, distinct from the amber hover/focus. */
+const SELECTED_OUTLINE = "outline-2 outline-foreground";
+
+/**
+ * The "this card opens" mark carried by every node.
+ *
+ * At rest it is a quiet corner glyph — present from the first frame (a
+ * hover-only affordance is invisible to someone who never hovers) yet dim
+ * enough to disappear into the card once understood. On hover OR keyboard
+ * focus it turns amber, in sync with the outline.
+ *
+ * `amplified` is the first-run state: on the node that is CURRENTLY working —
+ * the one the eye is already on — the glyph grows into a labelled "inspect"
+ * chip that breathes, so the click is offered exactly when it is interesting.
+ * It reverts to the quiet glyph for good once the visitor has opened a node.
+ * Reduced motion: same chip, no breathing.
+ */
+function InspectAffordance({
+  amplified,
+  reduce,
+}: {
+  amplified: boolean;
+  reduce: boolean | null;
+}) {
+  if (amplified)
+    return (
+      <motion.span
+        aria-hidden
+        className="pointer-events-none absolute right-1.5 top-1.5 inline-flex items-center gap-1 rounded-sm border border-accent bg-accent-dim/50 px-1.5 py-[3px] font-mono text-[9px] font-semibold uppercase leading-none tracking-[0.1em] text-accent"
+        animate={reduce ? undefined : { opacity: [1, 0.55, 1] }}
+        transition={{ duration: 1.8, ease: "easeInOut", repeat: Infinity }}
+      >
+        <InspectGlyph size={9} />
+        inspect
+      </motion.span>
+    );
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-sm border border-edge-strong bg-overlay/70 text-faint opacity-70 transition-[color,border-color,opacity] duration-200 group-hover:border-accent group-hover:text-accent group-hover:opacity-100 group-focus-visible:border-accent group-focus-visible:text-accent group-focus-visible:opacity-100"
+    >
+      <InspectGlyph size={9} />
+    </span>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /* Node card (shared desktop/mobile content)                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -269,11 +345,14 @@ export default function PipelineGraph({
   revisionRequested,
   selected,
   onSelect,
+  coach = false,
 }: {
   statuses: Record<MonitorNodeId, NodeStatus>;
   revisionRequested: boolean;
   selected: MonitorNodeId | null;
   onSelect: (id: MonitorNodeId | null) => void;
+  /** True while the visitor has never opened a node — amplifies the affordance. */
+  coach?: boolean;
 }) {
   const reduce = useReducedMotion();
 
@@ -430,11 +509,13 @@ export default function PipelineGraph({
                   key={id}
                   type="button"
                   onClick={() => onSelect(isSelected ? null : id)}
-                  title={NODE_INFO[id].role}
+                  title={`${NODE_INFO[id].role} — click to open its terminal`}
+                  aria-label={`${NODE_INFO[id].label} — open agent terminal`}
                   className={[
-                    "absolute flex cursor-pointer flex-col items-center justify-center gap-1.5 overflow-hidden rounded-md border-2 p-2 text-center",
+                    "absolute flex flex-col items-center justify-center gap-1.5 overflow-hidden rounded-md border-2 p-2 text-center",
+                    INTERACTIVE,
                     card,
-                    isSelected ? "ring-2 ring-foreground" : "",
+                    isSelected ? SELECTED_OUTLINE : "",
                   ].join(" ")}
                   style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }}
                   animate={{
@@ -473,6 +554,10 @@ export default function PipelineGraph({
                       />
                     </>
                   )}
+                  <InspectAffordance
+                    amplified={coach && working && !isSelected}
+                    reduce={reduce}
+                  />
                   <NodeCardContent id={id} status={status} />
                 </motion.button>
               );
@@ -490,11 +575,13 @@ export default function PipelineGraph({
                   key={id}
                   type="button"
                   onClick={() => onSelect(isSelected ? null : id)}
-                  title={`${tool.name} tool`}
+                  title={`${tool.name} tool — click to open its terminal`}
+                  aria-label={`${tool.name} tool — open terminal`}
                   className={[
-                    "absolute flex cursor-pointer items-center gap-2 rounded-sm border px-2 text-left",
+                    "absolute flex items-center gap-2 rounded-sm border px-2 text-left",
+                    INTERACTIVE,
                     style.card,
-                    isSelected ? "ring-2 ring-foreground" : "",
+                    isSelected ? SELECTED_OUTLINE : "",
                   ].join(" ")}
                   style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }}
                   animate={{
@@ -504,11 +591,17 @@ export default function PipelineGraph({
                   transition={{ duration: 0.3 }}
                 >
                   <MonogramBadge mono={tool.mono} size="sm" />
-                  <span className="min-w-0 truncate font-mono text-[11px] text-foreground/90">
+                  <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground/90">
                     {tool.name}
                   </span>
-                  <span className={`ml-auto font-mono text-[9px] uppercase ${style.text}`}>
+                  <span className={`font-mono text-[9px] uppercase ${style.text}`}>
                     {status === "active" ? "…" : status === "done" ? "ok" : "—"}
+                  </span>
+                  <span
+                    aria-hidden
+                    className="text-faint opacity-60 transition-[color,opacity] duration-200 group-hover:text-accent group-hover:opacity-100 group-focus-visible:text-accent group-focus-visible:opacity-100"
+                  >
+                    <InspectGlyph size={9} />
                   </span>
                 </motion.button>
               );
@@ -537,14 +630,20 @@ export default function PipelineGraph({
               <button
                 type="button"
                 onClick={() => onSelect(id === selected ? null : id)}
+                aria-label={`${NODE_INFO[id].label} — open agent terminal`}
                 className={[
-                  "flex w-full items-center gap-3 rounded-md border-2 p-2.5 text-left",
+                  "relative flex w-full items-center gap-3 rounded-md border-2 p-2.5 pr-9 text-left",
+                  INTERACTIVE,
                   gateActive ? "border-accent bg-accent-dim/25" : style.card,
-                  id === selected ? "ring-2 ring-foreground" : "",
+                  id === selected ? SELECTED_OUTLINE : "",
                 ].join(" ")}
                 style={{ opacity: status === "standby" && !isGate ? 0.65 : 1 }}
               >
                 <NodeCardContent id={id} status={status} compact />
+                <InspectAffordance
+                  amplified={coach && status === "active" && id !== selected}
+                  reduce={reduce}
+                />
               </button>
               {/* tool chips under Situation Context */}
               {id === "situation_context" && (
@@ -557,12 +656,17 @@ export default function PipelineGraph({
                         key={tid}
                         type="button"
                         onClick={() => onSelect(tid === selected ? null : tid)}
-                        className={`inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 font-mono text-[10px] ${STATUS_STYLE[tStatus].card} ${STATUS_STYLE[tStatus].text}`}
+                        aria-label={`${tool.name} tool — open terminal`}
+                        className={`inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 font-mono text-[10px] ${INTERACTIVE} ${STATUS_STYLE[tStatus].card} ${STATUS_STYLE[tStatus].text} ${tid === selected ? SELECTED_OUTLINE : ""}`}
                       >
                         <span aria-hidden className="font-semibold">
                           {tool.mono}
                         </span>
                         {tool.name}
+                        <InspectGlyph
+                          size={8}
+                          className="text-faint opacity-70 group-hover:text-accent group-focus-visible:text-accent"
+                        />
                       </button>
                     );
                   })}

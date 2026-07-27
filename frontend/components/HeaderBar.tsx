@@ -1,22 +1,30 @@
 // Ticket #38 — header / status region (region 1). Owner: @six-16.
 //
 // THE header of the control room. Composes:
-//   - the BLAZE wordmark, incident identity and state-machine phase,
-//   - the Gemma 4 / vLLM / NVIDIA GPU pills derived by lib/systemStatus.ts,
-//   - the network and audio mode pills (a blackout must be unmistakable),
-//   - the headline "Appels LLM cloud" claim.
-// Every value is read from the incident store. Nothing is hardcoded, nothing
-// is invented: an unknown value renders "—" / "en attente", and mock metric
-// values are visibly flagged (product invariant #4).
+//   - the BLAZE mark and the incident identity,
+//   - the state-machine phase derived from reduced events,
+//   - agent activity and replay progress (counts of events actually reduced),
+//   - the network and audio modes of the scenario (a blackout must be
+//     unmistakable from the back row).
+//
+// WHAT IS DELIBERATELY ABSENT: Gemma / vLLM / NVIDIA-GPU pills and the
+// "cloud LLM calls" claim. This deployment serves a REPLAY of a frozen event
+// stream — no model is loaded, no inference engine is running, no GPU is
+// attached. Those pills described a hackathon machine that no longer exists,
+// so they were removed rather than restated (see lib/systemStatus.ts).
+//
+// Every value below is read from the incident store. Nothing is hardcoded,
+// nothing is invented: an unknown value renders "—" or "standby".
 
 "use client";
 
 import Image from "next/image";
-import type { ReactNode } from "react";
-import { areMetricsPlaceholder, type IncidentState } from "@/lib/incidentStore";
+import type { IncidentState } from "@/lib/incidentStore";
 import { useIncidentState } from "@/lib/session";
-import { deriveSystemStatuses } from "@/lib/systemStatus";
-import { Badge, StatusDot, StatusPill } from "@/components/ui";
+import { deriveHeaderStatuses } from "@/lib/systemStatus";
+import type { StatusLevel } from "@/lib/systemStatus";
+import { StatusDot } from "@/components/ui";
+import type { StatusTone } from "@/components/ui";
 
 /* -------------------------------------------------------------------------- */
 /* Derived header values                                                      */
@@ -29,21 +37,21 @@ interface Phase {
 }
 
 /**
- * The demo runs one linear scenario, so the furthest milestone reached IS the
+ * The scenario is one linear run, so the furthest milestone reached IS the
  * phase. Checked from the most advanced backwards; every branch is backed by a
  * real store slice, none is guessed.
  */
 function derivePhase(s: IncidentState): Phase {
-  if (s.incidentStatus === "waiting") return { label: "en attente", tone: "idle" };
-  if (s.incidentStatus === "completed") return { label: "terminé", tone: "ok" };
-  if (s.dispatchesSent > 0) return { label: "diffusion", tone: "ok" };
-  if (s.dispatchUnlocked) return { label: "diffusion", tone: "running" };
-  if (s.approvalRequested) return { label: "validation commandant", tone: "warn" };
-  if (s.safetyReviews.length > 0) return { label: "revue sécurité", tone: "warn" };
-  if (s.plans.length > 0) return { label: "planification", tone: "running" };
-  if (s.snapshot) return { label: "contexte", tone: "running" };
-  if (s.audios.length > 0) return { label: "acquisition radio", tone: "running" };
-  return { label: "démarrage", tone: "running" };
+  if (s.incidentStatus === "waiting") return { label: "standby", tone: "idle" };
+  if (s.incidentStatus === "completed") return { label: "complete", tone: "ok" };
+  if (s.dispatchesSent > 0) return { label: "dispatched", tone: "ok" };
+  if (s.dispatchUnlocked) return { label: "dispatching", tone: "running" };
+  if (s.approvalRequested) return { label: "approval", tone: "warn" };
+  if (s.safetyReviews.length > 0) return { label: "safety review", tone: "warn" };
+  if (s.plans.length > 0) return { label: "planning", tone: "running" };
+  if (s.snapshot) return { label: "context", tone: "running" };
+  if (s.audios.length > 0) return { label: "radio intake", tone: "running" };
+  return { label: "starting", tone: "running" };
 }
 
 const PHASE_CLASS: Record<Phase["tone"], string> = {
@@ -54,35 +62,87 @@ const PHASE_CLASS: Record<Phase["tone"], string> = {
   idle: "border-edge-strong text-faint",
 };
 
-/** Reads a numeric metric, or null when it has not been emitted yet. */
-function metricNumber(
-  metrics: Record<string, unknown> | null,
-  key: string,
-): number | null {
-  const value = metrics?.[key];
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
+/** Status level → dot tone / value colour, shared by every header chip. */
+const LEVEL_TONE: Record<StatusLevel, StatusTone> = {
+  unknown: "idle",
+  ok: "ok",
+  active: "running",
+  warn: "warn",
+  alert: "alert",
+};
+
+const LEVEL_TEXT: Record<StatusLevel, string> = {
+  unknown: "text-faint",
+  ok: "text-foreground",
+  active: "text-info",
+  warn: "text-warn",
+  alert: "text-alert",
+};
 
 /* -------------------------------------------------------------------------- */
 /* Header building blocks                                                     */
 /* -------------------------------------------------------------------------- */
 
-/** Labelled pill used for the network and audio modes. */
+/**
+ * One header chip. Values are never clipped: the chip sizes to its content
+ * (`whitespace-nowrap`, no max-width), so nothing is ever cut mid-word.
+ */
+function HeaderChip({
+  label,
+  value,
+  level,
+  detail,
+  testId,
+  className = "",
+}: {
+  label: string;
+  value: string;
+  level: StatusLevel;
+  detail: string;
+  testId?: string;
+  className?: string;
+}) {
+  const tone = LEVEL_TONE[level];
+  return (
+    <div
+      data-testid={testId ? `status-${testId}` : undefined}
+      data-level={level}
+      title={`${label}: ${value} — ${detail}`}
+      className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-edge bg-overlay px-2.5 py-1 ${className}`}
+    >
+      <StatusDot tone={tone} pulse={level === "active" || level === "alert"} />
+      <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
+        {label}
+      </span>
+      <span className={`font-mono text-[11px] ${LEVEL_TEXT[level]}`}>
+        {value}
+      </span>
+      <span className="sr-only">{detail}</span>
+    </div>
+  );
+}
+
+/** Compact mode readout (network / audio), stacked label over value. */
 function ModePill({
   label,
-  children,
+  value,
   className,
   title,
   testId,
+  dot = false,
+  wrapperClassName = "flex",
 }: {
   label: string;
-  children: ReactNode;
+  value: string;
   className: string;
   title?: string;
   testId?: string;
+  dot?: boolean;
+  /** Controls the whole pill (label included) at a given breakpoint. */
+  wrapperClassName?: string;
 }) {
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className={`shrink-0 flex-col gap-0.5 ${wrapperClassName}`}>
       <span className="whitespace-nowrap text-[9px] uppercase tracking-[0.16em] text-faint">
         {label}
       </span>
@@ -91,7 +151,8 @@ function ModePill({
         title={title}
         className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm border px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wider ${className}`}
       >
-        {children}
+        {dot && <StatusDot tone="alert" pulse />}
+        {value}
       </span>
     </div>
   );
@@ -105,15 +166,7 @@ export default function HeaderBar() {
   const state = useIncidentState();
 
   const phase = derivePhase(state);
-  const metrics = state.metrics;
-  const placeholder = areMetricsPlaceholder(metrics);
-  const cloudCalls = metricNumber(metrics, "cloud_llm_calls");
-
-  // Gemma / vLLM / GPU come from the shared honest derivation. Network and
-  // incident are rendered below with the visual weight the demo requires.
-  const infraStatuses = deriveSystemStatuses(state).filter(
-    (s) => s.id === "gemma" || s.id === "vllm" || s.id === "gpu",
-  );
+  const statuses = deriveHeaderStatuses(state);
 
   const network = state.networkMode;
   const networkKnown = network !== null;
@@ -122,12 +175,15 @@ export default function HeaderBar() {
   return (
     <header
       id="header-status"
-      className="flex shrink-0 items-stretch gap-3 rounded-md border border-edge bg-surface px-3 py-2"
+      // `motion-reduce:` neutralises every pulse inside the header (dots are
+      // rendered by a shared primitive that animates unconditionally).
+      className="flex shrink-0 items-center gap-3 rounded-md border border-edge bg-surface px-3 py-2 motion-reduce:[&_*]:animate-none"
     >
-      {/* Identity + incident + state-machine phase */}
-      <div className="flex min-w-0 items-center gap-3">
+      {/* Identity + incident — the only elastic block, so the chips never
+          steal room from a name they would otherwise clip. */}
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         {/* Logo only — the wordmark is carried by the mark itself. */}
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Image
             src="/logo-blaze.png"
             alt="BLAZE"
@@ -147,55 +203,55 @@ export default function HeaderBar() {
             className="truncate text-[13px] font-semibold text-foreground"
             title={state.incidentName ?? undefined}
           >
-            {state.incidentName ?? "en attente de incident.started"}
+            {state.incidentName ?? "waiting for incident.started"}
           </div>
           <div className="truncate font-mono text-[10px] text-faint">
             {state.incidentId ?? "—"}
-            {state.lastSequence > 0 ? ` · seq ${state.lastSequence}` : ""}
           </div>
-        </div>
-
-        <div
-          data-testid="incident-status"
-          title="Phase de la machine à états de l'incident"
-          className={`flex items-center gap-2 whitespace-nowrap rounded-sm border px-3 py-1 text-sm font-bold uppercase tracking-[0.14em] ${PHASE_CLASS[phase.tone]}`}
-        >
-          <StatusDot
-            tone={phase.tone}
-            pulse={phase.tone === "running" || phase.tone === "warn"}
-          />
-          {phase.label}
         </div>
       </div>
 
-      {/* Local inference stack — driven by metric.updated / agent runs */}
+      {/* State machine — the single most important readout on the screen */}
       <div
-        className="ml-auto flex items-center gap-1.5"
-        role="status"
-        aria-label="État du système"
+        data-testid="incident-status"
+        title="Phase of the incident state machine, derived from reduced events"
+        className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-sm border px-3 py-1 text-sm font-bold uppercase tracking-[0.14em] ${PHASE_CLASS[phase.tone]}`}
       >
-        {infraStatuses.map((status) => (
-          <StatusPill
+        <StatusDot
+          tone={phase.tone}
+          pulse={phase.tone === "running" || phase.tone === "warn"}
+        />
+        {phase.label}
+      </div>
+
+      {/* Measured counts: agent activations and replay progress */}
+      <div
+        className="flex shrink-0 items-center gap-1.5"
+        role="status"
+        aria-label="Scenario progress"
+      >
+        {statuses.map((status) => (
+          <HeaderChip
             key={status.id}
             testId={status.id}
             label={status.label}
             value={status.value}
             level={status.level}
             detail={status.detail}
-            measured={status.measured}
+            className={status.id === "agents" ? "hidden lg:flex" : "hidden xl:flex"}
           />
         ))}
       </div>
 
-      {/* Modes — a network blackout must be unmistakable from the back row */}
-      <div className="flex items-center gap-2.5 border-l border-edge pl-2.5">
+      {/* Scenario modes — a network blackout must be unmistakable */}
+      <div className="flex shrink-0 items-center gap-2.5 border-l border-edge pl-2.5">
         <ModePill
           label="network"
           testId="network-mode"
           title={
             networkKnown
               ? `network_mode = ${network}`
-              : "aucun événement réseau reçu"
+              : "no network event received"
           }
           className={
             !networkKnown
@@ -204,18 +260,9 @@ export default function HeaderBar() {
                 ? "border-ok/70 bg-ok-dim/50 text-ok"
                 : "animate-pulse border-alert bg-alert-dim text-alert"
           }
-        >
-          {!networkKnown ? (
-            "—"
-          ) : online ? (
-            "en ligne"
-          ) : (
-            <>
-              <StatusDot tone="alert" pulse />
-              hors ligne
-            </>
-          )}
-        </ModePill>
+          dot={networkKnown && !online}
+          value={!networkKnown ? "—" : online ? "online" : "offline"}
+        />
 
         <ModePill
           label="audio"
@@ -223,54 +270,16 @@ export default function HeaderBar() {
           title={
             state.audioMode
               ? `audio_mode = ${state.audioMode}`
-              : "mode audio non annoncé"
+              : "no audio mode announced"
           }
+          wrapperClassName="hidden lg:flex"
           className={
             state.audioMode
               ? "border-accent-dim bg-accent-dim/30 text-accent"
               : "border-edge-strong text-faint"
           }
-        >
-          {state.audioMode ?? "—"}
-        </ModePill>
-      </div>
-
-      {/* Headline claim — zero cloud inference */}
-      <div
-        id="cloud-llm-claim"
-        className="flex items-center gap-3 rounded-sm border border-accent-dim bg-accent-dim/20 px-3 py-1"
-        title="Aucun appel à un LLM distant : toute l'inférence tourne localement"
-      >
-        <div className="flex flex-col leading-tight">
-          <span className="whitespace-nowrap text-[9px] uppercase tracking-[0.16em] text-accent/80">
-            appels LLM cloud
-          </span>
-          <span className="flex items-center gap-1 whitespace-nowrap font-mono text-[9px] text-faint">
-            {cloudCalls === null ? (
-              "en attente de la métrique"
-            ) : placeholder ? (
-              <>
-                <Badge
-                  variant="warn"
-                  title="Valeur mock du flux de démonstration — non mesurée"
-                >
-                  mock
-                </Badge>
-                non mesurée
-              </>
-            ) : (
-              "mesuré localement"
-            )}
-          </span>
-        </div>
-        <span
-          data-testid="cloud-llm-calls"
-          className={`font-mono text-3xl font-bold leading-none ${
-            cloudCalls === null ? "text-faint" : "text-accent-strong"
-          }`}
-        >
-          {cloudCalls === null ? "—" : cloudCalls}
-        </span>
+          value={state.audioMode ?? "—"}
+        />
       </div>
     </header>
   );
