@@ -1,0 +1,73 @@
+# BLAZE — replay demo deployment (Dokploy / any plain Docker host).
+#
+#   docker compose -f docker-compose.dokploy.yml up -d --build
+#
+# No LLM, no GPU, no API key: the scenario is the frozen 70-event stream in
+# contracts/mocks/demo_event_stream.jsonl, re-emitted by the DemoController
+# through the SSE bus. The live Gemma pipeline (backend/orchestrator) is NOT
+# wired into the API — it only ever ran from scripts/ai/run_e2e_one_audio.py.
+#
+# docker-compose.yml (dev, with the vLLM/GPU service) is left untouched.
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      BACKEND_PORT: 8080
+      SCENARIO_ID: ${SCENARIO_ID:-wildfire-demo-01}
+      DEMO_MODE: "true"
+      USE_CACHED_EXTERNAL_DATA: "true"
+      NETWORK_MODE: ${NETWORK_MODE:-online}
+      # Replay mode: no inference server. Empty => /health skips the LLM probe
+      # instead of reporting "unreachable" forever.
+      VLLM_BASE_URL: ""
+      # No Piper voice in the image; the dispatch WAVs are pre-generated and
+      # served from the frontend's public/data/audio/tts/.
+      PIPER_VOICE_PATH: ""
+    # Internal only — the browser reaches it through the frontend's
+    # same-origin /api/backend/* proxy.
+    expose:
+      - "8080"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python3 -c 'import urllib.request; urllib.request.urlopen("http://localhost:8080/health", timeout=2)'
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        # BUILD-time, not runtime: next build bakes the rewrite destination
+        # into .next/routes-manifest.json. Changing this needs a REBUILD, not
+        # a restart.
+        BACKEND_URL: http://backend:8080
+    environment:
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      # NEXT_PUBLIC_BACKEND_URL is deliberately NOT set — setting it makes the
+      # browser bypass the proxy and call the backend directly, which would
+      # require exposing it publicly and re-opening CORS.
+    ports:
+      # In Dokploy, attach the domain to this service on port 3000. You can
+      # drop this mapping entirely once Traefik routes to it.
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e 'fetch("http://localhost:3000/").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))'
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped

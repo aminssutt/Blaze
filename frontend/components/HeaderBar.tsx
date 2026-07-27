@@ -11,6 +11,7 @@
 
 "use client";
 
+import Image from "next/image";
 import type { ReactNode } from "react";
 import { areMetricsPlaceholder, type IncidentState } from "@/lib/incidentStore";
 import { useIncidentState } from "@/lib/session";
@@ -125,12 +126,18 @@ export default function HeaderBar() {
     >
       {/* Identity + incident + state-machine phase */}
       <div className="flex min-w-0 items-center gap-3">
-        <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold leading-none tracking-[0.3em] text-accent">
-            BLAZE
-          </span>
+        {/* Logo only — the wordmark is carried by the mark itself. */}
+        <div className="flex items-center gap-2">
+          <Image
+            src="/logo-blaze.png"
+            alt="BLAZE"
+            width={34}
+            height={34}
+            className="shrink-0 rounded-full"
+            loading="eager"
+          />
           <span className="hidden text-[10px] uppercase tracking-[0.2em] text-faint 2xl:inline">
-            salle de commandement
+            control room
           </span>
         </div>
 

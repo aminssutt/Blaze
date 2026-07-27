@@ -33,6 +33,10 @@ Thumbs.db
 .idea/
 .vscode/
 
+# Agent tooling scratch
+.claude/
+.playwright-mcp/
+
 # Logs & temp
 *.log
 tmp/

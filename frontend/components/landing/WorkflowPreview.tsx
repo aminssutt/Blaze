@@ -238,18 +238,17 @@ export default function WorkflowPreview() {
       style={{ borderColor: "var(--blaze-border)" }}
     >
       <p
-        className="mx-auto max-w-xl text-center text-[14px] leading-relaxed"
-        style={{ color: "var(--blaze-text-muted)" }}
+        className="font-mono text-[10px] uppercase tracking-[0.2em]"
+        style={{ color: "var(--blaze-text-faint)" }}
       >
-        In the demo, click any agent to open its technical terminal and a
-        plain-language account of what it received and decided.
+        Live preview · /workflow
       </p>
 
       {/* the animated miniature — entirely clickable, goes to the demo */}
       <Link
         href="/workflow"
         aria-label="Open the interactive demo — click any agent there to inspect it"
-        className="group mt-6 block"
+        className="group mt-5 block"
       >
         {/* mini agent nodes */}
         <div className="flex items-center justify-center gap-2.5 sm:gap-4" aria-hidden>
@@ -311,18 +310,20 @@ export default function WorkflowPreview() {
         </div>
       </Link>
 
-      <div className="mt-5 text-center">
+      {/* Deliberately NOT a third "Open demo" button: the whole card is already
+          the link, and the page keeps exactly one primary CTA per screen. */}
+      <p
+        className="mt-4 text-center text-[12.5px]"
+        style={{ color: "var(--blaze-text-faint)" }}
+      >
         <Link
           href="/workflow"
-          className="inline-block rounded-md border px-4 py-2 font-mono text-[12px] font-semibold uppercase tracking-[0.12em]"
-          style={{
-            borderColor: "var(--blaze-accent)",
-            color: "var(--blaze-accent)",
-          }}
+          className="underline decoration-dotted underline-offset-4"
+          style={{ color: "var(--blaze-text-muted)" }}
         >
-          Open demo →
+          Try it yourself →
         </Link>
-      </div>
+      </p>
     </div>
   );
 }

@@ -1,107 +1,117 @@
-// Landing v2 — Section 02 · HOW BLAZE WORKS. The signature animated diagram.
+// Landing — Section 02 · HOW BLAZE WORKS. The signature animated diagram.
 //
-// Eight numbered nodes (radio → STT → 4 Gemma stages → human veto → dispatch)
-// laid out on a serpentine SVG rail. Data dots travel the rail on an endless
-// ~8 s loop (SVG animateMotion — zero JS per frame); each node lights up as
-// the flow passes through it (motion/react keyframes synced to the same
-// loop); nodes reveal in stagger on scroll and show a one-line tooltip on
-// hover/focus. Reduced motion: no dots, every node lit, tooltips intact.
+// Eight stages (radio → STT → four Gemma stages → human veto → dispatch) on ONE
+// continuous left-to-right rail. Reading order is the reading order of the page:
+// no serpentine, no row that has to be read backwards, no need to follow the dot
+// to work out what happens next.
 //
-// The section closes with two short additions: what actually comes OUT of
-// the pipeline (per-unit voice orders, Piper, radio) and a demo-orientation
-// teaser — WorkflowPreview, an auto-playing miniature of the /workflow
-// click-an-agent gesture.
+// A single data packet travels the rail on a ~9 s loop and STOPS DEAD at stage
+// 07 for a sixth of the loop before the last segment lights up. That dwell is
+// the product's core claim made literal: dispatch is structurally impossible
+// until the commander approves. The rail is drawn dimmed past the gate for the
+// same reason.
+//
+// Cards light up as the packet reaches them (motion keyframes on the same loop
+// — no per-frame JS) and expose a one-line explanation on hover/focus.
+// Reduced motion: no packet, every card lit, tooltips and the mobile list
+// intact.
 
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
 import { Eyebrow, Reveal, fadeUp, staggerParent } from "./primitives";
-import WorkflowPreview from "./WorkflowPreview";
 
-const LOOP_S = 8;
+const LOOP_S = 9;
 
-/** Serpentine rail through the 8 node centers (viewBox 1000×460). */
-const RAIL_PATH = "M 125 100 L 875 100 C 985 100 985 360 875 360 L 125 360";
-
-type Node = {
+type Stage = {
   id: string;
+  /** Short label on the card. */
   title: string;
+  /** Tiny mono qualifier under the title. */
+  sub: string;
   tip: string;
-  /** Node center in viewBox coordinates. */
-  x: number;
-  y: number;
-  /** Fraction of the loop at which the traveling dot reaches this node. */
+  /** Fraction of the loop at which the packet reaches this stage. */
   at: number;
+  /** How long the stage stays lit, as a fraction of the loop. */
+  hold?: number;
   veto?: boolean;
 };
 
-const NODES: Node[] = [
+/**
+ * Eight evenly spaced stages. Card i is centred at (i + 0.5) / 8 of the rail,
+ * so the packet keyframes below are just those same centres.
+ */
+const STAGES: Stage[] = [
   {
     id: "radio",
     title: "Radio",
+    sub: "fireground",
     tip: "Five French voice reports from the fireground — corrections, contradictions, stress.",
-    x: 125,
-    y: 100,
-    at: 0.02,
+    at: 0,
   },
   {
     id: "stt",
-    title: "faster-whisper STT",
+    title: "Speech to text",
+    sub: "faster-whisper",
     tip: "Local speech-to-text — timestamped French transcripts, fully offline.",
-    x: 375,
-    y: 100,
-    at: 0.13,
+    at: 0.125,
   },
   {
     id: "radio-intel",
-    title: "Radio Intelligence",
+    title: "Radio intel",
+    sub: "gemma",
     tip: "Gemma extracts structured facts — evidence must quote the transcript.",
-    x: 625,
-    y: 100,
-    at: 0.27,
+    at: 0.25,
   },
   {
     id: "context",
-    title: "Situation Context + tools",
+    title: "Situation context",
+    sub: "7 tools",
     tip: "7 allowlisted tools — weather, terrain, hotspots, cadastre — every field provenance-labeled.",
-    x: 875,
-    y: 100,
-    at: 0.4,
+    at: 0.375,
   },
   {
     id: "planning",
-    title: "Tactical Planning",
+    title: "Tactical planning",
+    sub: "gemma",
     tip: "Facts and context fused into a versioned draft plan — evidence IDs verified by code.",
-    x: 875,
-    y: 360,
-    at: 0.6,
+    at: 0.5,
   },
   {
     id: "critic",
-    title: "Safety Critic",
+    title: "Safety critic",
+    sub: "8 rules",
     tip: "8 hard-coded safety rules attack the plan — pass, revise or block.",
-    x: 625,
-    y: 360,
-    at: 0.73,
+    at: 0.625,
   },
   {
     id: "veto",
-    title: "HUMAN VETO",
-    tip: "Dispatch is structurally impossible until the commander approves.",
-    x: 375,
-    y: 360,
-    at: 0.86,
+    title: "Human veto",
+    sub: "commander",
+    tip: "Dispatch is structurally impossible until the commander approves. The pipeline stops here, every time.",
+    at: 0.75,
+    hold: 0.19,
     veto: true,
   },
   {
     id: "dispatch",
-    title: "Dispatch + Piper TTS",
+    title: "Dispatch",
+    sub: "piper tts",
     tip: "One French voice order per unit, synthesized locally.",
-    x: 125,
-    y: 360,
-    at: 0.96,
+    at: 0.95,
   },
 ];
+
+/** Rail centre of stage i, as a percentage string. */
+const centre = (i: number) => `${(i + 0.5) * 12.5}%`;
+
+/** Packet keyframes — reaches stage 07 at 75% of the loop and waits until 90%. */
+const PACKET_LEFT = [
+  ...STAGES.slice(0, 7).map((_, i) => centre(i)),
+  centre(6), // the dwell: same position, later time
+  centre(7),
+];
+const PACKET_TIMES = [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.9, 1];
 
 const VERDICTS = [
   { label: "pass", color: "var(--blaze-ok)" },
@@ -109,68 +119,84 @@ const VERDICTS = [
   { label: "block", color: "var(--blaze-alert)" },
 ];
 
-/** Keyframe times: node is hot from `at` for ~14% of the loop, then cools. */
-function hotTimes(at: number): number[] {
-  const rise = Math.min(at + 0.04, 0.995);
-  const fall = Math.min(at + 0.16, 0.998);
+/** Keyframe times: the stage is hot from `at`, then cools. */
+function hotTimes(at: number, hold: number): number[] {
+  const rise = Math.min(at + 0.03, 0.99);
+  const fall = Math.min(rise + hold, 0.995);
   return [0, at, rise, fall, 1];
 }
 
-function DiagramNode({ node, index }: { node: Node; index: number }) {
+function StageCard({ stage, index }: { stage: Stage; index: number }) {
   const reduced = useReducedMotion();
   const accent = "var(--blaze-accent)";
+  const idle = stage.veto ? "var(--blaze-accent-dim)" : "var(--blaze-border)";
 
   return (
-    <motion.div
-      variants={fadeUp}
-      className="group absolute w-[21%] -translate-x-1/2 -translate-y-1/2"
-      style={{ left: `${node.x / 10}%`, top: `${(node.y / 460) * 100}%` }}
-    >
+    <motion.div variants={fadeUp} className="group relative h-full px-1.5">
       <motion.div
-        className="rounded-lg border px-3 py-2.5 text-center"
+        className="relative flex h-full flex-col justify-center rounded-lg border px-2.5 py-3 text-center"
         style={{
-          background: "var(--blaze-bg-raised)",
-          borderColor: node.veto ? "var(--blaze-accent-dim)" : "var(--blaze-border)",
+          background: stage.veto ? "rgba(124, 74, 3, 0.16)" : "var(--blaze-bg-raised)",
+          borderColor: idle,
         }}
         animate={
           reduced
             ? { opacity: 1 }
             : {
-                opacity: [0.55, 0.55, 1, 1, 0.55],
-                borderColor: node.veto
-                  ? ["var(--blaze-accent-dim)", "var(--blaze-accent-dim)", accent, accent, "var(--blaze-accent-dim)"]
-                  : ["var(--blaze-border)", "var(--blaze-border)", accent, accent, "var(--blaze-border)"],
+                opacity: [0.5, 0.5, 1, 1, 0.5],
+                borderColor: [idle, idle, accent, accent, idle],
               }
         }
-        transition={{ duration: LOOP_S, times: hotTimes(node.at), repeat: Infinity }}
+        transition={{
+          duration: LOOP_S,
+          times: hotTimes(stage.at, stage.hold ?? 0.13),
+          repeat: Infinity,
+        }}
         tabIndex={0}
-        aria-label={`${node.title} — ${node.tip}`}
+        aria-label={`Stage ${index + 1}: ${stage.title} — ${stage.tip}`}
       >
         <p
           className="font-mono text-[10px] uppercase tracking-[0.18em]"
-          style={{ color: node.veto ? accent : "var(--blaze-text-faint)" }}
+          style={{ color: stage.veto ? accent : "var(--blaze-text-faint)" }}
         >
           {String(index + 1).padStart(2, "0")}
         </p>
         <p
           className="mt-1 text-[12.5px] font-semibold leading-tight"
-          style={{ color: node.veto ? accent : "var(--blaze-text)" }}
+          style={{ color: stage.veto ? accent : "var(--blaze-text)" }}
         >
-          {node.title}
+          {stage.title}
+        </p>
+        <p
+          className="mt-1 truncate font-mono text-[9.5px] uppercase tracking-[0.1em]"
+          style={{ color: "var(--blaze-text-faint)" }}
+        >
+          {stage.sub}
         </p>
       </motion.div>
 
-      {/* hover / focus tooltip */}
+      {/* hover / focus tooltip.
+          The 240px bubble is centred on its stage, but the first and last
+          stages sit against the container edge — centring there pushed the
+          bubble ~21px past the viewport and gave the whole page a horizontal
+          scrollbar at 1024px. The two end stages anchor to their own edge
+          instead. */}
       <div
         role="tooltip"
-        className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-56 -translate-x-1/2 rounded-md border px-3 py-2 text-left text-[12px] leading-snug opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
+        className={`pointer-events-none absolute top-full z-20 mt-2 w-60 rounded-md border px-3 py-2 text-left text-[12px] leading-snug opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100 ${
+          index === 0
+            ? "left-0"
+            : index === STAGES.length - 1
+              ? "right-0"
+              : "left-1/2 -translate-x-1/2"
+        }`}
         style={{
           background: "var(--blaze-bg-overlay)",
           borderColor: "var(--blaze-border-strong)",
           color: "var(--blaze-text-muted)",
         }}
       >
-        {node.tip}
+        {stage.tip}
       </div>
     </motion.div>
   );
@@ -183,164 +209,244 @@ export default function PipelineDiagram() {
     <section
       id="how-it-works"
       aria-labelledby="how-title"
-      className="scroll-mt-20 py-24 lg:py-32"
+      className="scroll-mt-20 py-12 lg:py-14"
     >
       <div className="mx-auto max-w-6xl px-6 lg:px-10">
         <Reveal>
-          <Eyebrow index="02" label="How it works" />
-          <h2
-            id="how-title"
-            className="mt-4 max-w-3xl text-3xl font-semibold leading-tight tracking-tight lg:text-4xl"
-            style={{ color: "var(--blaze-text)" }}
-          >
-            One radio message, end to end — on one machine.
-          </h2>
-          <p
-            className="mt-5 max-w-2xl text-[15px] leading-relaxed"
-            style={{ color: "var(--blaze-text-muted)" }}
-          >
-            Hover any stage for the one-line explanation.
-          </p>
+          <div className="grid gap-x-12 gap-y-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-end">
+            <div>
+              <Eyebrow index="02" label="How it works" />
+              <h2
+                id="how-title"
+                className="mt-3 text-3xl font-semibold leading-tight tracking-tight lg:text-4xl"
+                style={{ color: "var(--blaze-text)" }}
+              >
+                One radio message, end to end — on one machine.
+              </h2>
+            </div>
+            <p
+              className="text-[14px] leading-relaxed lg:pb-1"
+              style={{ color: "var(--blaze-text-muted)" }}
+            >
+              Eight stages, left to right. Hover any of them for the one-line
+              explanation — and watch what happens at stage 07.
+            </p>
+          </div>
         </Reveal>
 
         {/* ------------------------------------------------------------- */}
-        {/* Desktop: serpentine rail with traveling data dots              */}
+        {/* Desktop: one continuous rail, one packet, one gate            */}
         {/* ------------------------------------------------------------- */}
         <motion.div
-          className="relative mt-16 hidden lg:block"
-          style={{ aspectRatio: "1000 / 460" }}
+          className="relative mt-10 hidden lg:block"
           variants={staggerParent}
           initial={reduced ? "show" : "hidden"}
           whileInView="show"
           viewport={{ once: true, margin: "-80px" }}
-          aria-label="BLAZE pipeline: radio, speech-to-text, radio intelligence, situation context, tactical planning, safety critic, human veto, dispatch"
+          aria-label="BLAZE pipeline, in order: radio, speech to text, radio intelligence, situation context, tactical planning, safety critic, human veto, dispatch"
         >
-          <svg
-            viewBox="0 0 1000 460"
-            className="absolute inset-0 size-full"
-            aria-hidden
-          >
-            <path
-              d={RAIL_PATH}
-              fill="none"
-              stroke="var(--blaze-border-strong)"
-              strokeWidth="1.5"
-              strokeDasharray="4 6"
+          {/* the rail */}
+          <div className="relative h-10" aria-hidden>
+            {/* segment 01 → 07 */}
+            <div
+              className="absolute top-1/2 h-px -translate-y-1/2"
+              style={{
+                left: centre(0),
+                right: `${100 - 81.25}%`,
+                backgroundImage:
+                  "repeating-linear-gradient(90deg, var(--blaze-border-strong) 0 5px, transparent 5px 13px)",
+              }}
             />
-            {!reduced &&
-              [0, 1, 2].map((i) => (
-                <circle key={i} r="5" fill="var(--blaze-accent)">
-                  <animateMotion
-                    dur={`${LOOP_S}s`}
-                    begin={`${(-i * LOOP_S) / 3}s`}
-                    repeatCount="indefinite"
-                    path={RAIL_PATH}
-                  />
-                </circle>
-              ))}
-            {!reduced &&
-              [0, 1, 2].map((i) => (
-                <circle key={`halo-${i}`} r="10" fill="var(--blaze-accent)" opacity="0.18">
-                  <animateMotion
-                    dur={`${LOOP_S}s`}
-                    begin={`${(-i * LOOP_S) / 3}s`}
-                    repeatCount="indefinite"
-                    path={RAIL_PATH}
-                  />
-                </circle>
-              ))}
-          </svg>
+            {/* segment 07 → 08, dimmed: it only exists once a human says yes */}
+            <div
+              className="absolute top-1/2 h-px -translate-y-1/2"
+              style={{
+                left: centre(6),
+                right: `${100 - 93.75}%`,
+                backgroundImage:
+                  "repeating-linear-gradient(90deg, var(--blaze-accent-dim) 0 5px, transparent 5px 13px)",
+              }}
+            />
 
-          {NODES.map((node, index) => (
-            <DiagramNode key={node.id} node={node} index={index} />
-          ))}
+            {/* stage markers, each with a tick down to its own card */}
+            {STAGES.map((stage, i) => (
+              <span key={stage.id}>
+                <span
+                  className="absolute top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                  style={{
+                    left: centre(i),
+                    background: stage.veto
+                      ? "var(--blaze-accent)"
+                      : "var(--blaze-border-strong)",
+                  }}
+                />
+                <span
+                  className="absolute top-1/2 h-5 w-px -translate-x-1/2"
+                  style={{
+                    left: centre(i),
+                    background: stage.veto
+                      ? "var(--blaze-accent-dim)"
+                      : "var(--blaze-border)",
+                  }}
+                />
+              </span>
+            ))}
+
+            {/* the gate at stage 07 — two uprights the packet has to wait at */}
+            <span
+              className="absolute top-1/2 h-8 w-[2px] -translate-y-1/2 rounded-full"
+              style={{ left: `calc(${centre(6)} - 12px)`, background: "var(--blaze-accent)" }}
+            />
+            <span
+              className="absolute top-1/2 h-8 w-[2px] -translate-y-1/2 rounded-full"
+              style={{ left: `calc(${centre(6)} + 10px)`, background: "var(--blaze-accent)" }}
+            />
+            <span
+              className="absolute -top-1 font-mono text-[9px] uppercase tracking-[0.2em]"
+              style={{
+                left: centre(6),
+                translate: "-50% -100%",
+                color: "var(--blaze-accent)",
+              }}
+            >
+              Human veto
+            </span>
+
+            {/* the travelling packet */}
+            {!reduced && (
+              <>
+                <motion.span
+                  className="absolute top-1/2 size-2.5 rounded-full"
+                  style={{
+                    translate: "-50% -50%",
+                    background: "var(--blaze-accent)",
+                    boxShadow: "0 0 12px 3px rgba(245,158,11,0.55)",
+                  }}
+                  animate={{ left: PACKET_LEFT }}
+                  transition={{
+                    duration: LOOP_S,
+                    times: PACKET_TIMES,
+                    repeat: Infinity,
+                    ease: "linear",
+                  }}
+                />
+                <motion.span
+                  className="absolute top-1/2 size-6 rounded-full"
+                  style={{
+                    translate: "-50% -50%",
+                    background: "var(--blaze-accent)",
+                    opacity: 0.16,
+                  }}
+                  animate={{ left: PACKET_LEFT }}
+                  transition={{
+                    duration: LOOP_S,
+                    times: PACKET_TIMES,
+                    repeat: Infinity,
+                    ease: "linear",
+                  }}
+                />
+              </>
+            )}
+          </div>
+
+          {/* the cards, exactly under their markers */}
+          <div className="grid grid-cols-8">
+            {STAGES.map((stage, i) => (
+              <StageCard key={stage.id} stage={stage} index={i} />
+            ))}
+          </div>
         </motion.div>
 
         {/* ------------------------------------------------------------- */}
-        {/* Mobile: vertical rail, details always visible                  */}
+        {/* Mobile: same order, vertical rail, details always visible      */}
         {/* ------------------------------------------------------------- */}
         <motion.ol
-          className="relative mt-12 space-y-4 border-l pl-6 lg:hidden"
+          className="relative mt-10 space-y-4 border-l pl-6 lg:hidden"
           style={{ borderColor: "var(--blaze-border-strong)" }}
           variants={staggerParent}
           initial={reduced ? "show" : "hidden"}
           whileInView="show"
           viewport={{ once: true, margin: "-40px" }}
         >
-          {NODES.map((node, index) => (
-            <motion.li key={node.id} variants={fadeUp} className="relative">
+          {STAGES.map((stage, index) => (
+            <motion.li key={stage.id} variants={fadeUp} className="relative">
               <span
                 aria-hidden
                 className="absolute -left-[30px] top-1.5 size-2 rounded-full"
                 style={{
-                  background: node.veto ? "var(--blaze-accent)" : "var(--blaze-border-strong)",
+                  background: stage.veto
+                    ? "var(--blaze-accent)"
+                    : "var(--blaze-border-strong)",
                 }}
               />
               <p
                 className="font-mono text-[10px] uppercase tracking-[0.18em]"
                 style={{
-                  color: node.veto ? "var(--blaze-accent)" : "var(--blaze-text-faint)",
+                  color: stage.veto ? "var(--blaze-accent)" : "var(--blaze-text-faint)",
                 }}
               >
-                {String(index + 1).padStart(2, "0")}
+                {String(index + 1).padStart(2, "0")} · {stage.sub}
               </p>
               <p
                 className="mt-0.5 text-[15px] font-semibold"
-                style={{ color: node.veto ? "var(--blaze-accent)" : "var(--blaze-text)" }}
+                style={{
+                  color: stage.veto ? "var(--blaze-accent)" : "var(--blaze-text)",
+                }}
               >
-                {node.title}
+                {stage.title}
               </p>
-              <p className="mt-1 text-[13px] leading-snug" style={{ color: "var(--blaze-text-muted)" }}>
-                {node.tip}
+              <p
+                className="mt-1 text-[13px] leading-snug"
+                style={{ color: "var(--blaze-text-muted)" }}
+              >
+                {stage.tip}
               </p>
             </motion.li>
           ))}
         </motion.ol>
 
-        <Reveal delay={0.15} className="mt-14">
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <p
-              className="text-[15px] font-semibold"
-              style={{ color: "var(--blaze-text)" }}
-            >
-              The AI proposes.{" "}
-              <span style={{ color: "var(--blaze-accent)" }}>
-                The commander decides.
-              </span>
-            </p>
-            <span
-              className="flex items-center gap-2"
-              aria-label="Safety review verdicts: pass, revise, block"
-            >
-              {VERDICTS.map((verdict) => (
-                <span
-                  key={verdict.label}
-                  className="rounded-full border px-3 py-1 font-mono text-[11px] uppercase tracking-[0.16em]"
-                  style={{ borderColor: verdict.color, color: verdict.color }}
-                >
-                  {verdict.label}
+        {/* ------------------------------------------------------------- */}
+        {/* The claim, and what actually comes out the far end             */}
+        {/* ------------------------------------------------------------- */}
+        <Reveal delay={0.15} className="mt-12">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center">
+            <div>
+              <p
+                className="text-[19px] font-semibold leading-snug"
+                style={{ color: "var(--blaze-text)" }}
+              >
+                The AI proposes.{" "}
+                <span style={{ color: "var(--blaze-accent)" }}>
+                  The commander decides.
                 </span>
-              ))}
-            </span>
+              </p>
+              <span
+                className="mt-3 flex items-center gap-2"
+                aria-label="Safety review verdicts: pass, revise, block"
+              >
+                {VERDICTS.map((verdict) => (
+                  <span
+                    key={verdict.label}
+                    className="rounded-full border px-3 py-1 font-mono text-[11px] uppercase tracking-[0.16em]"
+                    style={{ borderColor: verdict.color, color: verdict.color }}
+                  >
+                    {verdict.label}
+                  </span>
+                ))}
+              </span>
+            </div>
+
+            <p
+              className="text-[14px] leading-relaxed"
+              style={{ color: "var(--blaze-text-muted)" }}
+            >
+              Once approved, the plan becomes personalized voice radio messages
+              per unit — generated locally with Piper and transmitted over the
+              radio. Alpha 3 receives its fallback order, Bravo 2 its perimeter,
+              Charlie 1 its verification mission — each unit hears only what
+              concerns it, with acknowledgment of receipt.
+            </p>
           </div>
-
-          {/* What comes out: the approved plan as per-unit voice radio orders. */}
-          <p
-            className="mx-auto mt-6 max-w-2xl text-center text-[14px] leading-relaxed"
-            style={{ color: "var(--blaze-text-muted)" }}
-          >
-            Once approved, the plan becomes personalized voice radio messages
-            per unit — generated locally with Piper and transmitted over the
-            radio. Alpha 3 receives its fallback order, Bravo 2 its perimeter,
-            Charlie 1 its verification mission — each unit hears only what
-            concerns it, with acknowledgment of receipt.
-          </p>
-        </Reveal>
-
-        {/* Demo-orientation teaser: an auto-playing miniature of the
-            /workflow gesture — click an agent, its terminal opens. */}
-        <Reveal delay={0.2} className="mx-auto mt-12 max-w-3xl">
-          <WorkflowPreview />
         </Reveal>
       </div>
     </section>

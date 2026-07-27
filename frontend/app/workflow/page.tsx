@@ -22,7 +22,7 @@
  */
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useIncidentState, usePlayerState, useSessionControls } from "@/lib/session";
 import {
   deriveNodeStatuses,
@@ -63,13 +63,26 @@ function IncidentStatusChip() {
 export default function MonitorPage() {
   const state = useIncidentState();
   const controls = useSessionControls();
+  const player = usePlayerState();
   const [selected, setSelected] = useState<MonitorNodeId | null>(null);
+  const autoStarted = useRef(false);
 
   // Arm the player on mount (same contract as /expert): loads + validates the
   // stream so totals and jump points are ready before the first Play.
   useEffect(() => {
     controls.start();
   }, [controls]);
+
+  // Then play it, once, as soon as the stream is armed. A visitor arriving
+  // from the landing's "Open demo" used to land on a frozen graph whose only
+  // affordance was an unlabelled ▶ in the corner — most never pressed it. The
+  // ref guard keeps this a one-shot: pausing must not re-trigger a play.
+  useEffect(() => {
+    if (autoStarted.current) return;
+    if (player.status !== "ready") return;
+    autoStarted.current = true;
+    controls.toggle();
+  }, [player.status, controls]);
 
   const statuses = useMemo(() => deriveNodeStatuses(state), [state]);
   const decisionPending = state.approvalRequested && !state.approval;
@@ -89,9 +102,8 @@ export default function MonitorPage() {
             className="shrink-0 rounded-full"
             loading="eager"
           />
-          <span className="font-mono text-[12px] font-bold leading-none tracking-[0.24em] text-accent">
-            BLAZE
-          </span>
+          {/* Logo only — the wordmark next to it was redundant with the logo
+              and with the nav pill directly above. */}
           <span className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-faint md:inline">
             agent workflow
           </span>
