@@ -73,16 +73,15 @@ to `http://backend:8080`, set in `docker-compose.dokploy.yml` under
    branch `main`.
 2. **Compose file path**: `docker-compose.dokploy.yml`.
 3. **Domain**: attach it to service `frontend`, port `3000`. Let Dokploy/Traefik
-   handle TLS. Once the domain is routing, the `ports:` mapping on `frontend`
-   in the compose file can be removed.
+   handle TLS. The service uses `expose:` rather than `ports:`, so Traefik can
+   reach it without publishing port 3000 on the host (where Dokploy itself
+   already listens).
 4. **Environment** (all optional — the defaults in the compose file work):
 
    | Variable | Default | Note |
    |---|---|---|
    | `SCENARIO_ID` | `wildfire-demo-01` | |
    | `NETWORK_MODE` | `online` | the "cut the network" toggle overrides it at runtime |
-   | `FRONTEND_PORT` | `3000` | host port, irrelevant once Traefik routes |
-
    No secret is required. There is no `.env` in the images — `pydantic-settings`
    skips a missing env file and falls back to the defaults in
    `backend/api/config.py`.
@@ -100,11 +99,9 @@ for this app.
 
 ```bash
 docker compose -f docker-compose.dokploy.yml up -d --build
-curl localhost:3000/api/backend/health          # through the proxy
-open http://localhost:3000/workflow             # then press ▶
+docker compose -f docker-compose.dokploy.yml exec frontend \
+  node -e 'fetch("http://localhost:3000/api/backend/health").then(async r => { console.log(r.status, await r.text()); process.exit(r.ok ? 0 : 1) })'
 ```
-
-`FRONTEND_PORT=3001 docker compose -f … up -d` if 3000 is taken by `next dev`.
 
 Teardown: `docker compose -f docker-compose.dokploy.yml down`. State is
 in-memory — down means reset.

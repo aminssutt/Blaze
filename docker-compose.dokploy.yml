@@ -55,10 +55,10 @@ services:
       # NEXT_PUBLIC_BACKEND_URL is deliberately NOT set — setting it makes the
       # browser bypass the proxy and call the backend directly, which would
       # require exposing it publicly and re-opening CORS.
-    ports:
-      # In Dokploy, attach the domain to this service on port 3000. You can
-      # drop this mapping entirely once Traefik routes to it.
-      - "${FRONTEND_PORT:-3000}:3000"
+    # Internal only: Dokploy/Traefik routes the public domain to this port.
+    # Do not publish 3000 on the host — Dokploy itself already uses it.
+    expose:
+      - "3000"
     depends_on:
       backend:
         condition: service_healthy
